@@ -1,0 +1,111 @@
+GEBEN-0.01
+----------
+
+GEBEN is a PHP source code level debugger running under Emacs.
+
+GEBEN is pre-alpha stage in this release. It could be a sample
+implementation as a php debugger. Only a few features are covered.
+(Still it might be useful with help of Emacs' other features ;-)
+
+
+FEATURES
+--------
+
+- some kind of code execution
+   run/stop/step-in/step-over/step-out
+- set/unset line-number breakpoints
+- expression evaluation
+
+
+REQUIREMENTS
+------------
+
+[server side]
+ - linux box (currently not working on Windows box)
+ - Web server with PHP engine
+ - `Xdebug' PHP extention 2.0.0 RC1 or later, configured as
+  enabled remote debugging with DBGp protocol
+
+[client side]
+ - Emacs21.4 or later
+ - cedet
+ - xdebugclient
+
+
+INSTALLATION
+------------
+
+[server side]
+
+1. Install a web server. (Apache2, etc.)
+2. Install php. (http://php.net)
+3. Install Xdebug. (http://xdebug.org)
+4. Confugure php INI file as following:
+    (requires)
+    - xdebug.remote_enable = true
+    - xdebug.remote_handler = dbgp
+    - xdebug.remote_host = your_client_ip
+    (optional)
+    - xdebug.remote_autostart = On
+5. Run the web server
+
+[client side]
+
+1. Install cedet into Emacs. (http://cedet.sourceforge.net/)
+2. Download a xdebugclient program (http://xdebug.org/)
+   and locate it to /usr/local/bin or somewhere where PATH is
+   enabled.
+2' Or build manually from source code. Sources are included in
+   Xdebug source code package.
+3. Unpack geben source code package and copy source files into
+   somewhere Emacs' variable `load-path' holds.
+   (e.g. /usr/share/Emacs/site-lisp/)
+4. Install autoload hookds into your .Emacs file.
+    -> (autoload 'geben "geben" "PHP Debugger on Emacs" t)
+
+
+DEBUGGING
+---------
+
+Here is an illustration.
+
+1. Run Emacs.
+2. Start geben: M-x geben
+3. Access to debuggee server's php web page via browser or
+   something like that web client program.
+   If the server's xdebug configuration parameter
+   `xdebug.remote_autostart' is not "On", you need to add an 
+   additional query parameter `XDEBUG_SESSION_START' to start
+   an xdebug debugging session.
+   e.g.)
+     http://www.example.com/test.php?XDEBUG_SESSION_START=1
+4. When the xdebug session connection is established there
+   appears a source code of the page on the Emacs' buffer.
+5. Now the buffer is under the minor-mode 'geben-mode'.
+   You can controll the debugger with several keys.
+
+     spc step into/step over
+     i   step into
+     o   step over
+     r   step out
+     b   set a breakpoint at a line
+     u   unset a breakpoint at a line
+     g   run
+     q   stop
+
+
+SUPPORT
+-------
+
+We all time need your supports - bug reports, feature requests,
+code/documents/design contributions, and donations.
+To submit one or more of them, please visit our web site.
+
+ http://sourceforge.net/projects/geben/
+
+Thank you.
+
+--
+
+FUJINAKA Tohru as thoney
+thoney@nakarika.com
