@@ -1,3 +1,7 @@
+2008-10-08  reedom  <reedom_@users.sourceforge.net>
+
+	* [FIX] Byte compiled geben.el could raise undefined symbol error.
+
 2008-10-07  reedom  <reedom_@users.sourceforge.net>
 
         * [ADD] Custom face `geben-breakpoint-face'.

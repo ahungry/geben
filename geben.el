@@ -3,7 +3,7 @@
 ;; Filename: geben.el
 ;; Author: reedom <reedom_@users.sourceforge.net>
 ;; Maintainer: reedom <reedom_@users.sourceforge.net>
-;; Version: 0.1
+;; Version: 0.11
 ;; URL: http://sourceforge.net/projects/geben/
 ;; Keywords: DBGp, debugger, php, Xdebug, python, Komodo
 ;; Compatibility: Emacs 21.4
@@ -51,7 +51,7 @@
 ;; 
 ;;; Code:
 
-(eval-when-compile
+(eval-and-compile
   (require 'cl)
   (require 'gud)
   (require 'xml))
