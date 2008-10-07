@@ -1,7 +1,7 @@
 Version 0.10 (2008-10-07)
 
  Incompatible changes:
-  * Removed dependencies on `cedet' package. 
+  * Removed dependencies on `CEDET' package. 
 
  Visible changes:
   * fixed: Improved line-no breakpoint handling.

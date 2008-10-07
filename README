@@ -15,7 +15,7 @@ BIG CHANGES
   can uninstall CEDET if you want.
 - Now GEBEN lisp package forms a monolithic file.
   If you have installed previous version, you should remove all of old
-  GEBEN files from instllation directory.
+  GEBEN files from installation directory.
 
 FEATURES
 --------
@@ -32,7 +32,7 @@ REQUIREMENTS
 [server side]
  - linux box (currently not working on Windows box)
  - Web server with PHP engine
- - `Xdebug' PHP extention 2.0.3 or later, configured as
+ - `Xdebug' PHP extension 2.0.3 or later, configured as
   remote debugging enabled with DBGp protocol
 
 [client side]
@@ -46,12 +46,12 @@ INSTALLATION
 [server side]
 
 1. Install a web server. (Apache2, etc.)
-2. Install php. (http://php.net)
+2. Install PHP. (http://php.net)
 3. Install Xdebug. (http://xdebug.org)
-4. Confugure php INI file as following:
+4. Configure PHP INI file as following:
     (requires)
     - xdebug.remote_enable = true
-    - xdebug.remote_handler = dbgp
+    - xdebug.remote_handler = DBGp
     - xdebug.remote_host = your_client_ip_or_hostname
     (optional)
     - xdebug.remote_autostart = On
@@ -64,7 +64,7 @@ INSTALLATION
    enabled.
 1' Or build manually from source code. Sources are included in
    Xdebug source code package.
-2. Unpack geben source code package and copy geben.el into
+2. Unpack GEBEN source code package and copy geben.el into
    somewhere Emacs' variable `load-path' holds.
    (e.g. /usr/share/Emacs/site-lisp/)
 3. Insert autoload hooks into your .Emacs file.
@@ -89,7 +89,7 @@ Here is an illustration.
 4. When the xdebug session connection is established there
    appears a source code of the page on the Emacs' buffer.
 5. Now the buffer is under the minor-mode 'geben-mode'.
-   You can controll the debugger with several keys.
+   You can control the debugger with several keys.
 
      spc step into/step over
      i   step into

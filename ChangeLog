@@ -1,14 +1,14 @@
 2008-10-07  reedom  <reedom_@users.sourceforge.net>
 
-        * [ADD] Custum face `geben-breakpoint-face'.
-        * [ADD] Suppress inquery of DBGp client termination at exiting emacs.
+        * [ADD] Custom face `geben-breakpoint-face'.
+        * [ADD] Suppress inquiry of DBGp client termination at exiting emacs.
 
 2008-10-06  reedom  <reedom_@users.sourceforge.net>
 
         * [UPD] Now GEBEN manages buffer modification around where line-no
                 breakpoint set. If there was line insertion before
                 breakpoint, GEBEN moves the following line-no breakpoints
-                downwards. Hilight effect(overlay) will be managed as it
+                downwards. Highlight effect(overlay) will be managed as it
                 should be.
         * [ADD] Custom variable `geben-temporary-file-directory'.
         * [ADD] Custom variable `geben-close-remote-file-after-finish'.
@@ -19,7 +19,7 @@
         * [FIX] Make GEBEN to call `step_into' at the end of the
                 initial state to place debugger's cursor at the
                 entry point of the debuggee script.
-        * [FIX] Make GEBEN to call `stop' at the stoppint state
+        * [FIX] Make GEBEN to call `stop' at the stopping state
                 to finish up a debugging session as user expect.
         * [ADD] Custom variable `geben-dbgp-feature-alist'.
         * [UPD] Now GEBEN send `feature_set' commands with the variable
