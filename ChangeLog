@@ -1,0 +1,43 @@
+2008-10-07  reedom  <reedom_@users.sourceforge.net>
+
+        * [ADD] Suppress inquery of DBGp client termination at exiting emacs.
+
+2008-10-06  reedom  <reedom_@users.sourceforge.net>
+
+        * [UPD] Now GEBEN manages buffer modification around where line-no
+                breakpoint set. If there was line insertion before
+                breakpoint, GEBEN moves the following line-no breakpoints
+                downwards. Hilight effect(overlay) will be managed as it
+                should be.
+        * [ADD] Custom variable `geben-temporary-file-directory'.
+        * [ADD] Custom variable `geben-close-remote-file-after-finish'.
+        * [ADD] Custom variable `geben-show-breakpoints-debugging-only'.
+        
+2008-10-05  reedom  <reedom_@users.sourceforge.net>
+        
+        * [FIX] Make GEBEN to call `step_into' at the end of the
+                initial state to place debugger's cursor at the
+                entry point of the debuggee script.
+        * [FIX] Make GEBEN to call `stop' at the stoppint state
+                to finish up a debugging session as user expect.
+        * [ADD] Custom variable `geben-dbgp-feature-alist'.
+        * [UPD] Now GEBEN send `feature_set' commands with the variable
+                `geben-dbgp-feature-alist' in the initial state.
+        * [ADD] Custom variable `geben-dbgp-command-line'.
+        
+2008-10-04  reedom  <reedom_@users.sourceforge.net>
+
+        * geben.el: [CHG] Removed dependency on CEDET. With this changing
+                          many functions were removed/renamed/added
+        * geben.el: [CHG] Moved all of GEBEN implementation to geben.el.
+
+2007-07-04  thoney_f(reedom)  <reedom_@users.sourceforge.net>
+        
+        * geben-dbgp.el: [FIX] geben-response-eval didn't decode `PHP object'.
+        * geben-dbgp.el: [FIX] An overlay-arrow-position leaved after finishing
+                               a debug session.
+        
+2006-12-26  thoney_f(reedom)  <reedom_@users.sourceforge.net>
+
+        * Released version 0.01, a sample implementation.
+

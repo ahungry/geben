@@ -1,0 +1,10 @@
+This directory contains miscellaneous files which may help
+user in some situations.
+
+
+* wisent-php-tags.el
+* wisent-php-tags.wy
+
+PHP parser scripts for Semantic(http://cedet.sourceforge.net/semantic.shtml)
+written in GEBEN pre-alpha state, when GEBEN had depended on CEDET.
+

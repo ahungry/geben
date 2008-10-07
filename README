@@ -1,12 +1,21 @@
-GEBEN-0.01
+GEBEN-0.10
 ----------
 
 GEBEN is a PHP source code level debugger running under Emacs.
 
-GEBEN is pre-alpha stage in this release. It could be a sample
-implementation as a php debugger. Only a few features are covered.
+GEBEN is alpha stage in this release. Only a few features are covered.
 (Still it might be useful with help of Emacs' other features ;-)
 
+
+BIG CHANGES
+-----------
+
+- From this release GEBEN does not depend on CEDET emacs library.
+  If you have installed CEDET previously only for GEBEN-pre-alpha, you
+  can uninstall CEDET if you want.
+- Now GEBEN lisp package forms a monolithic file.
+  If you have installed previous version, you should remove all of old
+  GEBEN files from instllation directory.
 
 FEATURES
 --------
@@ -23,12 +32,11 @@ REQUIREMENTS
 [server side]
  - linux box (currently not working on Windows box)
  - Web server with PHP engine
- - `Xdebug' PHP extention 2.0.0 RC1 or later, configured as
-  enabled remote debugging with DBGp protocol
+ - `Xdebug' PHP extention 2.0.3 or later, configured as
+  remote debugging enabled with DBGp protocol
 
 [client side]
  - Emacs21.4 or later
- - cedet
  - xdebugclient
 
 
@@ -44,23 +52,22 @@ INSTALLATION
     (requires)
     - xdebug.remote_enable = true
     - xdebug.remote_handler = dbgp
-    - xdebug.remote_host = your_client_ip
+    - xdebug.remote_host = your_client_ip_or_hostname
     (optional)
     - xdebug.remote_autostart = On
 5. Run the web server
 
 [client side]
 
-1. Install cedet into Emacs. (http://cedet.sourceforge.net/)
-2. Download a xdebugclient program (http://xdebug.org/)
+1. Download a xdebugclient program (http://xdebug.org/)
    and locate it to /usr/local/bin or somewhere where PATH is
    enabled.
-2' Or build manually from source code. Sources are included in
+1' Or build manually from source code. Sources are included in
    Xdebug source code package.
-3. Unpack geben source code package and copy source files into
+2. Unpack geben source code package and copy geben.el into
    somewhere Emacs' variable `load-path' holds.
    (e.g. /usr/share/Emacs/site-lisp/)
-4. Install autoload hookds into your .Emacs file.
+3. Insert autoload hooks into your .Emacs file.
     -> (autoload 'geben "geben" "PHP Debugger on Emacs" t)
 
 
@@ -107,5 +114,5 @@ Thank you.
 
 --
 
-FUJINAKA Tohru as thoney
-thoney@nakarika.com
+FUJINAKA Tohru as thoney, as reedom
+reedom_@users.sourceforge.net

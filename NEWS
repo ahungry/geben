@@ -1,0 +1,18 @@
+Version 0.10 (2008-10-07)
+
+ Incompatible changes:
+  * Removed dependencies on `cedet' package. 
+
+ Visible changes:
+  * fixed: Improved line-no breakpoint handling.
+  * fixed: Improved initial and final state handling.
+  * custom variables added:
+    - geben-dbgp-feature-alist
+    - geben-dbgp-command-line
+    - geben-temporary-file-directory
+    - geben-close-remote-file-after-finish
+    - geben-show-breakpoints-debugging-only
+			  
+Version 0.01 (2006-12-26)
+
+ * Sample implementation.
