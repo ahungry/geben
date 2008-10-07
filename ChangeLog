@@ -1,5 +1,6 @@
 2008-10-07  reedom  <reedom_@users.sourceforge.net>
 
+        * [ADD] Custum face `geben-breakpoint-face'.
         * [ADD] Suppress inquery of DBGp client termination at exiting emacs.
 
 2008-10-06  reedom  <reedom_@users.sourceforge.net>

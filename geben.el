@@ -51,6 +51,10 @@
 ;; 
 ;;; Code:
 
+(eval-when-compile
+  (require 'cl)
+  (require 'gud))
+
 ;; For compatibility between versions of custom
 (eval-and-compile
   (condition-case ()
@@ -75,9 +79,10 @@
   "A PHP Debugging environment."
   :group 'debug)
 
-(eval-when-compile
-  (require 'cl)
-  (require 'gud))
+(defgroup geben-highlighting-faces nil
+  "Faces for GEBEN."
+  :group 'geben
+  :group 'font-lock-highlighting-faces)
 
 (defcustom geben-session-starting-hook nil
   "*Hook running at when the geben debugging session is starting."
@@ -121,6 +126,24 @@ debugging is finished."
   "*Specifies whether the debug target is in remote server or local."
   :group 'geben
   :type 'boolean)
+
+(defface geben-breakpoint-face
+  '((((class color) (min-colors 88) (background light))
+     ;; The background must not be too dark, for that means
+     ;; the character is hard to see when the cursor is there.
+     (:background "magenta3" :foreground "lightskyblue1"))
+    (((class color) (min-colors 88) (background dark))
+     (:background "palevioletred2" :foreground "brown4"))
+    (((class color) (min-colors 16))
+     (:background "magenta4" :foreground "cyan1"))
+    (((class color) (min-colors 8))
+     (:background "magenta4" :foreground "cyan1"))
+    (t (:inverse-video t)))
+  "Face used to highlight various names.
+This includes element and attribute names, processing
+instruction targets and the CDATA keyword in a CDATA section.
+This is not used directly, but only via inheritance by other faces."
+  :group 'nxml-highlighting-faces)
 
 ;;; #autoload
 (defun geben ()
@@ -553,7 +576,7 @@ A source object forms a property list with three properties
 		       (geben-overlay-make-line (plist-get bp :lineno)
 						(find-buffer-visiting local-path)))))
     (when overlay
-      (geben-overlay-put overlay 'face "isearch")
+      (geben-overlay-put overlay 'face 'geben-breakpoint-face)
       (geben-overlay-put overlay 'evaporate t)
       (geben-overlay-put overlay 'bp bp)
       (geben-overlay-put overlay 'modification-hooks '(geben-dbgp-bp-overlay-modified))

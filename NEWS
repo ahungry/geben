@@ -12,6 +12,8 @@ Version 0.10 (2008-10-07)
     - geben-temporary-file-directory
     - geben-close-remote-file-after-finish
     - geben-show-breakpoints-debugging-only
+  * custom face added:
+    - geben-breakpoint-face
 			  
 Version 0.01 (2006-12-26)
 
