@@ -1,5 +1,6 @@
 2008-10-08  reedom  <reedom_@users.sourceforge.net>
 
+	* [FIX] Macro version of `geben-what-line' didn't run on Meadow 3.00.
 	* [FIX] Byte compiled geben.el could raise undefined symbol error.
 
 2008-10-07  reedom  <reedom_@users.sourceforge.net>

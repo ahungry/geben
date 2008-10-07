@@ -1243,15 +1243,15 @@ If the optional argument COMMAND-LINE is nil, the value of
 		      (t (rec (car x) (rec (cdr x) acc))))))
     (rec x nil)))
 
-(defmacro geben-what-line (&optional pos)
+(defun geben-what-line (&optional pos)
   "Get the number of the line in which POS is located.
 If POS is ommitted, then the current position is used."
-  `(let ((opoint (or ,pos (point))))
-     (save-restriction
-       (widen)
-       (save-excursion
-	 (forward-line 0)
-	 (1+ (count-lines 1 (point)))))))
+  (let ((opoint (or pos (point))))
+    (save-restriction
+      (widen)
+      (save-excursion
+	(forward-line 0)
+	(1+ (count-lines 1 opoint))))))
 
 
 (provide 'geben)
