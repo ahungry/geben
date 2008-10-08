@@ -1,7 +1,17 @@
 2008-10-08  reedom  <reedom_@users.sourceforge.net>
 
-	* [FIX] Macro version of `geben-what-line' didn't run on Meadow 3.00.
-	* [FIX] Byte compiled geben.el could raise undefined symbol error.
+        * [FIX] Fixed increasing breakpoints as often as entering
+	        debugging session.
+        * [UPD] Now GEBEN sets/unsets breakpoint in off session state.
+        * [FIX] Make GEBEN do not send commands while off session state.
+        * [ADD] New argument QUIT to `geben' command. It can be specified
+                by the prefix arg, as typing like `M-x C-u geben'.
+                It asks executed GEBEN to quit.
+
+2008-10-08  reedom  <reedom_@users.sourceforge.net>
+
+        * [FIX] Macro version of `geben-what-line' didn't run on Meadow 3.00.
+        * [FIX] Byte compiled geben.el could raise undefined symbol error.
 
 2008-10-07  reedom  <reedom_@users.sourceforge.net>
 

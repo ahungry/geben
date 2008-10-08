@@ -1,4 +1,4 @@
-GEBEN-0.11
+GEBEN-0.12
 ----------
 
 GEBEN is a PHP source code level debugger running under Emacs.
@@ -77,7 +77,7 @@ DEBUGGING
 Here is an illustration.
 
 1. Run Emacs.
-2. Start geben: M-x geben
+2. To start geben, type: M-x geben
 3. Access to debuggee server's php web page via browser or
    something like that web client program.
    If the server's xdebug configuration parameter
@@ -86,7 +86,7 @@ Here is an illustration.
    an xdebug debugging session.
    e.g.)
      http://www.example.com/test.php?XDEBUG_SESSION_START=1
-4. When the xdebug session connection is established there
+4. When the GEBEN session connection is established there
    appears a source code of the page on the Emacs' buffer.
 5. Now the buffer is under the minor-mode 'geben-mode'.
    You can control the debugger with several keys.
@@ -99,7 +99,8 @@ Here is an illustration.
      u   unset a breakpoint at a line
      g   run
      q   stop
-
+6. If you felt you'd debugged enough, it's time to quit GEBEN.
+   To quit GEBEN, type: C-u M-x geben
 
 SUPPORT
 -------

@@ -1,3 +1,13 @@
+Version 0.12 (2008-10-08)
+
+  Visible changes:
+  * added: New argument QUIT to `geben' command.
+           It can be specified by the prefix arg, as typing like
+	   `M-x C-u geben'. This asks executed GEBEN to quit.
+  * Now GEBEN sets/unsets breakpoint even in off session state.
+  * fixed: Make GEBEN do not send commands while off session state.
+  * fixed: Increasing breakpoints by entering debugging session.
+  * 
 Version 0.11 (2008-10-08)
 
   * fixed: Byte compiled geben.el could raise undefined
