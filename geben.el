@@ -1044,16 +1044,22 @@ required for each dbgp command by the protocol specification."
 			  (setq buffer-undo-list t)
 			  (run-hook-with-args 'geben-dbgp-redirect-buffer-init-hook)
 			  (current-buffer)))))
-	     (outwin (display-buffer buf t t)))
+	     (outwin (display-buffer buf))
+	     save-pos)
 	(with-current-buffer buf
-	  (insert (decode-coding-string
-		   (if (string= "base64" encoding)
-		       (base64-decode-string content)
-		     content)
-		   geben-dbgp-redirect-coding-system)))
-	(save-selected-window
-	  (select-window outwin)
-	  (goto-char (point-max)))))))
+	  (setq save-pos (and (eq (point) (point-max))
+			      (point)))
+	  (save-excursion
+	    (goto-char (point-max))
+	    (insert (decode-coding-string
+		     (if (string= "base64" encoding)
+			 (base64-decode-string content)
+		       content)
+		     geben-dbgp-redirect-coding-system))))
+	(unless save-pos
+	  (save-selected-window
+	    (select-window outwin)
+	    (goto-char (point-max))))))))
 
 (defun geben-dbgp-redirect-buffer-name (type)
   (when (or (and (eq type :stdout) geben-dbgp-redirect-stdout-current)

@@ -1,4 +1,9 @@
 2008-10-13  reedom  <reedom_@users.sourceforge.net>
+        
+        * [CHG] Improved redirection buffer scrolling behavior.
+                
+
+2008-10-13  reedom  <reedom_@users.sourceforge.net>
 
         * [ADD] New command 'geben-where'.
                 Assigned to `w' key in geben-mode.
