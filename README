@@ -1,4 +1,4 @@
-GEBEN-0.12
+GEBEN-0.13
 ----------
 
 GEBEN is a PHP source code level debugger running under Emacs.
@@ -24,6 +24,8 @@ FEATURES
    run/stop/step-in/step-over/step-out
 - set/unset line-number breakpoints
 - expression evaluation
+- STDOUT/STDERR redirection
+- backtrace
 
 
 REQUIREMENTS
@@ -91,14 +93,18 @@ Here is an illustration.
 5. Now the buffer is under the minor-mode 'geben-mode'.
    You can control the debugger with several keys.
 
-     spc step into/step over
-     i   step into
-     o   step over
-     r   step out
-     b   set a breakpoint at a line
-     u   unset a breakpoint at a line
-     g   run
-     q   stop
+     spc     step into/step over
+     i       step into
+     o       step over
+     r       step out
+     b       set a breakpoint at a line
+     u       unset a breakpoint at a line
+     g       run
+     t       set redirection mode
+     \C-u t  change redirection mode
+     w       where
+     q       stop
+
 6. If you felt you'd debugged enough, it's time to quit GEBEN.
    To quit GEBEN, type: C-u M-x geben
 

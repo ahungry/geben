@@ -3,7 +3,7 @@
 ;; Filename: geben.el
 ;; Author: reedom <reedom_@users.sourceforge.net>
 ;; Maintainer: reedom <reedom_@users.sourceforge.net>
-;; Version: 0.12
+;; Version: 0.13
 ;; URL: http://sourceforge.net/projects/geben/
 ;; Keywords: DBGp, debugger, php, Xdebug, python, Komodo
 ;; Compatibility: Emacs 21.4
@@ -76,6 +76,8 @@
       (defmacro defcustom (var value doc &rest args)
 	`(defvar (,var) (,value) (,doc))))))
 
+;; -- [customize group] --
+
 (defgroup geben nil
   "A PHP Debugging environment."
   :group 'debug)
@@ -85,21 +87,29 @@
   :group 'geben
   :group 'font-lock-highlighting-faces)
 
-(defcustom geben-session-starting-hook nil
-  "*Hook running at when the geben debugging session is starting."
+;; debuggee scripts
+
+(defcustom geben-after-visit-hook 'geben-enter-geben-mode
+  "*Hook running at when GEBEN visits a debuggee script file.
+Each funcions is invoked with an argument BUFFER."
   :group 'geben
   :type 'hook)
 
-(defcustom geben-session-finished-hook nil
-  "*Hook running at when the geben debugging session is finished."
+(defcustom geben-display-window-function 'pop-to-buffer
+  "*Function to display a debuggee script's content.
+Typical functions are `pop-to-buffer' and `switch-to-buffer'."
   :group 'geben
-  :type 'hook)
+  :type 'function)
 
-(defcustom geben-after-visit-hook nil
-  "*Hook running at when..."
-  :group 'geben
-  :type 'hook)
-
+(defmacro geben-dbgp-display-window (buf)
+  "Display a buffer anywhere in a window, depends on the circumstance."
+  `(if (geben-dbgp-redirect-buffer-visiblep)
+       (progn
+	 (if (buffer-local-value 'geben-dbgp-redirect-bufferp (current-buffer))
+	     (pop-to-buffer ,buf)
+	   (switch-to-buffer ,buf)))
+     (funcall geben-display-window-function ,buf)))
+  
 (defcustom geben-temporary-file-directory temporary-file-directory
   "*Base directory path where GEBEN creates a temporary directory."
   :group 'geben
@@ -115,6 +125,13 @@ If the value is nil, the files left in buffers."
   :group 'geben
   :type 'boolean)
 
+(defcustom geben-debug-target-remotep nil
+  "*Specifies whether the debug target is in remote server or local."
+  :group 'geben
+  :type 'boolean)
+
+;; breakpoints
+
 (defcustom geben-show-breakpoints-debugging-only t
   "*Specify breakpoint markers visibility.
 If the value is nil, GEBEN will always display breakpoint markers.
@@ -123,28 +140,76 @@ debugging is finished."
   :group 'geben
   :type 'boolean)
 
-(defcustom geben-debug-target-remotep nil
-  "*Specifies whether the debug target is in remote server or local."
-  :group 'geben
-  :type 'boolean)
-
 (defface geben-breakpoint-face
-  '((((class color) (min-colors 88) (background light))
-     ;; The background must not be too dark, for that means
-     ;; the character is hard to see when the cursor is there.
-     (:background "magenta3" :foreground "lightskyblue1"))
-    (((class color) (min-colors 88) (background dark))
-     (:background "palevioletred2" :foreground "brown4"))
-    (((class color) (min-colors 16))
-     (:background "magenta4" :foreground "cyan1"))
-    (((class color) (min-colors 8))
-     (:background "magenta4" :foreground "cyan1"))
-    (t (:inverse-video t)))
+  '((((class color) (background light))
+     :background "red1")
+    (((class color) (background dark))
+     :background "red1")
+    (t :inverse-video t))
   "Face used to highlight various names.
 This includes element and attribute names, processing
 instruction targets and the CDATA keyword in a CDATA section.
 This is not used directly, but only via inheritance by other faces."
-  :group 'nxml-highlighting-faces)
+  :group 'geben-highlighting-faces)
+
+;; redirect
+
+(defvar geben-dbgp-redirect-stdout-current nil)
+(defvar geben-dbgp-redirect-stderr-current nil)
+(defvar geben-dbgp-redirect-combine-current nil)
+
+(defcustom geben-dbgp-redirect-stdout :redirect
+  "*If non-nil, GEBEN redirects the debuggee script's STDOUT.
+
+If the value is \`:redirect', then STDOUT goes to both GEBEN and
+default destination.
+If the value is \`:intercept', then STDOUT never goes to the
+regular destination but to GEBEN."
+  :group 'geben
+  :type '(choice (const :tag "Disable" nil)
+		 (const :tag "Redirect" :redirect)
+		 (const :tag "Intercept" :intercept))
+  :set (lambda (sym value)
+	 (setq geben-dbgp-redirect-stdout value
+	       geben-dbgp-redirect-stdout-current value)))
+
+(defcustom geben-dbgp-redirect-stderr :redirect
+  "*If non-nil, GEBEN redirects the debuggee script's STDERR.
+
+If the value is \`:redirect', then STDERR goes to both GEBEN and
+default destination.
+If the value is \`:intercept', then STDERR never goes to the
+regular destination but to GEBEN."
+  :group 'geben
+  :type '(choice (const :tag "Disable" nil)
+		 (const :tag "Redirect" :redirect)
+		 (const :tag "Intercept" :intercept))
+  :set (lambda (sym value)
+	 (setq geben-dbgp-redirect-stderr value
+	       geben-dbgp-redirect-stderr-current value)))
+
+(defcustom geben-dbgp-redirect-combine t
+  "*If non-nil, redirection of STDOUT and STDERR go to same buffer.
+Or to each own buffer."
+  :group 'geben
+  :type 'boolean
+  :set (lambda (sym value)
+	 (setq geben-dbgp-redirect-combine value
+	       geben-dbgp-redirect-combine-current value)))
+
+(defcustom geben-dbgp-redirect-coding-system 'utf-8-dos
+  "*Coding sytem for decoding redirect content."
+  :group 'geben
+  :type 'coding-system)
+
+(defcustom geben-dbgp-redirect-buffer-init-hook nil
+  "*Hook running at when a redirection buffer is created."
+  :group 'geben
+  :type 'hook)
+
+;;
+;; -- [interactive commands] --
+;;
 
 ;;; #autoload
 (defun geben (&optional quit)
@@ -194,7 +259,7 @@ described its help page."
   (define-key geben-mode-map " " 'geben-step-again)
   (define-key geben-mode-map "g" 'geben-run)
   ;;(define-key geben-mode-map "G" 'geben-Go-nonstop-mode)
-  ;;(define-key geben-mode-map "t" 'geben-trace-mode)
+  (define-key geben-mode-map "t" 'geben-set-redirect)
   ;;(define-key geben-mode-map "T" 'geben-Trace-fast-mode)
   ;;(define-key geben-mode-map "c" 'geben-continue-mode)
   ;;(define-key geben-mode-map "C" 'geben-Continue-fast-mode)
@@ -227,7 +292,7 @@ described its help page."
   ;;(define-key geben-mode-map "E" 'geben-visit-eval-list)
 
   ;; views
-  ;;(define-key geben-mode-map "w" 'geben-where)
+  (define-key geben-mode-map "w" 'geben-where)
   ;;(define-key geben-mode-map "v" 'geben-view-outside) ;; maybe obsolete??
   ;;(define-key geben-mode-map "p" 'geben-bounce-point)
   ;;(define-key geben-mode-map "P" 'geben-view-outside) ;; same as v
@@ -235,7 +300,7 @@ described its help page."
 
   ;; misc
   ;;(define-key geben-mode-map "?" 'geben-help)
-  ;;(define-key geben-mode-map "d" 'geben-backtrace)
+  (define-key geben-mode-map "d" 'geben-backtrace)
 
   ;;(define-key geben-mode-map "-" 'negative-argument)
 
@@ -263,13 +328,6 @@ The geben-mode buffer commands:
 (add-hook 'kill-emacs-hook
 	  (lambda ()
 	    (geben-dbgp-reset)))
-
-(add-hook 'geben-after-visit-hook
-	  (lambda (buf)
-	    (with-current-buffer buf
-	      (or (not (fboundp 'geben-mode))
-		  geben-mode
-		  (geben-mode t)))))
 
 (defvar geben-step-type :step-into
   "Step command of what \`geben-step-again\' acts.
@@ -351,6 +409,36 @@ FILEURI forms like as \`file:///path/to/file\'."
   (interactive "s")
   (geben-dbgp-command-source fileuri))
 
+(defun geben-backtrace ()
+  (interactive)
+  (geben-dbgp-backtrace))
+
+(defun geben-set-redirect (target &optional arg)
+  "Set the debuggee script's output redirection mode.
+This command enables you to redirect the debuggee script's output to GEBEN.
+You can select redirection target from \`stdout', \`stderr' and both of them.
+Prefixed with \\[universal-argument], you can also select redirection mode
+from \`redirect', \`intercept' and \`disabled'."
+  (interactive (list (case (read-char "Redirect: o)STDOUT e)STRERR b)Both\n")
+		       (?o :stdout)
+		       (?e :stderr)
+		       (?b :both))
+		     current-prefix-arg))
+  (unless target
+    (error "cancelled"))
+  (let ((mode (if arg
+		  (case (read-char "Mode: r)Redirect i)Intercept d)Disable")
+		    (?r :redirect)
+		    (?i :intercept)
+		    (?d :disable))
+		:redirect)))
+    (unless mode
+      (error "cancelled"))
+    (when (memq target '(:stdout :both))
+      (geben-dbgp-command-stdout mode))
+    (when (memq target '(:stderr :both))
+      (geben-dbgp-command-stderr mode))))
+
 ;;-------------------------------------------------------------
 ;;  cross emacs overlay definitions
 ;;-------------------------------------------------------------
@@ -413,7 +501,7 @@ FILEURI forms like as \`file:///path/to/file\'."
   :group 'geben
   :type '(alist :key-type string :key-type sexp))
 
-(defun geben-dbgp-set-features ()
+(defun geben-dbgp-init-features ()
   "Configure debugger engine with value of `geben-dbgp-feature-alist'."
   (mapc (lambda (cons)
 	  (geben-dbgp-command-feature-get (car cons))
@@ -429,12 +517,110 @@ FILEURI forms like as \`file:///path/to/file\'."
   "Make a new transaction id."
   (number-to-string (incf geben-dbgp-tid)))
 
+;; -- [session] --
 (defvar geben-dbgp-init-info nil
   "Store dbgp initial message.")
 
 (defun geben-dbgp-in-session ()
   (not (null geben-dbgp-init-info)))
 
+;; -- [stack] --
+
+(defvar geben-dbgp-current-stack nil
+  "Current stack list of the debuggee script.")
+
+(defun geben-dbgp-backtrace ()
+  "Display backtrace."
+  (unless (geben-dbgp-in-session)
+    (error "GEBEN is out of debugging session."))
+  (let ((buf (get-buffer-create "*GEBEN backtrace*")))
+    (with-current-buffer buf
+      (setq buffer-read-only nil)
+      (buffer-disable-undo)
+      (erase-buffer)
+      (next-error-follow-minor-mode t)
+      (dotimes (i (length geben-dbgp-current-stack))
+	(let* ((stack (second (nth i geben-dbgp-current-stack)))
+	       (fileuri (geben-dbgp-regularize-fileuri (cdr (assq 'filename stack))))
+	       (lineno (cdr (assq 'lineno stack)))
+	       (where (cdr (assq 'where stack)))
+	       (beg (point)))
+	  (insert (format "%s:%s: %s\n" fileuri lineno where))
+	  (put-text-property beg (+ beg (length fileuri))
+			     'face "compilation-info")
+	  (put-text-property (+ beg (length fileuri) 1) (+ beg (length fileuri) 1 (length lineno))
+			     'face "compilation-line-number")
+	  (put-text-property beg (1- (point))
+			     'geben-stack-frame
+			     (list :fileuri fileuri :lineno lineno))))
+      (setq buffer-read-only t)
+      (geben-backtrace-mode)
+      (goto-char (point-min)))
+    (geben-dbgp-display-window buf)))
+
+(defcustom geben-backtrace-mode-hook nil
+  "*Hook running at when GEBEN's backtrace buffer is initialized."
+  :group 'geben
+  :type 'hook)
+
+(defvar geben-backtrace-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map [mouse-2] 'geben-backtrace-mode-mouse-goto)
+    (define-key map "\C-m" 'geben-backtrace-mode-goto)
+    (define-key map "q" 'geben-backtrace-mode-quit)
+    map)
+  "Keymap for `geben-backtrace-mode'")
+    
+(defun geben-backtrace-mode ()
+  "Major mode for GEBEN's backtrace output."
+  (interactive)
+  (kill-all-local-variables)
+  (use-local-map geben-backtrace-mode-map)
+  (setq major-mode 'geben-backtrace-mode)
+  (setq mode-name "GEBEN backtrace")
+  (set (make-local-variable 'revert-buffer-function)
+       (lambda (a b) nil))
+  (add-hook 'change-major-mode-hook 'font-lock-defontify nil t)
+  (setq next-error-function 'geben-backtrace-next-error)
+  (run-mode-hooks 'geben-backtrace-mode-hook))
+
+(defalias 'geben-backtrace-mode-mouse-goto 'geben-backtrace-mode-goto)
+(defun geben-backtrace-mode-goto (&optional event)
+  (interactive (list last-nonmenu-event))
+  (let ((stack-frame
+         (if (null event)
+             ;; Actually `event-end' works correctly with a nil argument as
+             ;; well, so we could dispense with this test, but let's not
+             ;; rely on this undocumented behavior.
+             (get-text-property (point) 'geben-stack-frame)
+           (with-current-buffer (window-buffer (posn-window (event-end event)))
+             (save-excursion
+               (goto-char (posn-point (event-end event)))
+	       (get-text-property (point) 'geben-stack-frame)))))
+        same-window-buffer-names
+        same-window-regexps)
+    (when stack-frame
+      (geben-dbgp-indicate-current-line (plist-get stack-frame :fileuri)
+					(plist-get stack-frame :lineno)
+					t))))
+
+(defun geben-backtrace-mode-quit ()
+  "Quit and bury the backtrace mode buffer."
+  (interactive)
+  (quit-window)
+  (geben-where))
+
+(defun geben-where ()
+  "Move to the current breaking point."
+  (interactive)
+  (if geben-dbgp-current-stack
+      (let* ((stack (second (car geben-dbgp-current-stack)))
+	     (fileuri (geben-dbgp-regularize-fileuri (cdr (assq 'filename stack))))
+	     (lineno (cdr (assq 'lineno stack))))
+	(geben-dbgp-indicate-current-line fileuri lineno t))
+    (when (interactive-p)
+      (message "GEBEN is not started."))))
+      
 ;; -- [cmd hash] --
 
 (defvar geben-dbgp-cmd-hash (make-hash-table :test #'equal)
@@ -703,7 +889,8 @@ A source object forms a property list with three properties
   
 (defun geben-session-init-variables ()
   (setq geben-dbgp-stack nil
-	geben-dbgp-init-info nil)
+	geben-dbgp-init-info nil
+	geben-dbgp-current-stack nil)
   (clrhash geben-dbgp-cmd-hash)
   (clrhash geben-dbgp-source-hash))
   
@@ -721,6 +908,16 @@ A source object forms a property list with three properties
 
 ;;; dbgp protocol handler
 
+(defcustom geben-session-starting-hook nil
+  "*Hook running at when the geben debugging session is starting."
+  :group 'geben
+  :type 'hook)
+
+(defcustom geben-session-finished-hook nil
+  "*Hook running at when the geben debugging session is finished."
+  :group 'geben
+  :type 'hook)
+
 (defun geben-dbgp-entry (msg)
   "Analyze MSG and dispatch to a specific handler."
   (case (xml-node-name msg)
@@ -728,12 +925,16 @@ A source object forms a property list with three properties
      t)
     ('init
      (setq geben-dbgp-init-info msg)
-     (geben-dbgp-set-features)
+     (run-hooks 'geben-session-starting-hook)
+     (geben-dbgp-init-features)
+     (geben-dbgp-init-redirects)
      (geben-dbgp-restore-breakpoints)
      (geben-dbgp-prepare-source-file (xml-get-attribute msg 'fileuri))
      (geben-dbgp-command-step-into))
     ('response
      (geben-dbgp-handle-response msg))
+    ('stream
+     (geben-dbgp-handle-stream msg))
     ('otherwise
      ;;mada
      (message "unknown protocol: %S" msg))))
@@ -757,17 +958,26 @@ A source object forms a property list with three properties
 	    (funcall func cmd msg)
 	  (unless (functionp func)
 	    (message "%s is not defined" func-name)))))
-    (geben-dbgp-cmd-remove tid msg err))
-  (geben-dbgp-handle-status msg))
+    (geben-dbgp-cmd-remove tid msg err)
+    (geben-dbgp-handle-status msg err)))
 
-(defun geben-dbgp-handle-status (msg)
+(defun geben-dbgp-handle-stream (msg)
+  (let ((type (case (intern-soft (xml-get-attribute msg 'type))
+		('stdout :stdout)
+		('stderr :stderr)))
+	(encoding (xml-get-attribute msg 'encoding))
+	(content (car (last msg)))
+	bufname buf outwin)
+    (geben-dbgp-redirect-stream type encoding content)))
+
+(defun geben-dbgp-handle-status (msg err)
   "Handle status code in a response message."
   (let ((status (xml-get-attribute msg 'status)))
     (cond
      ((equal status "stopping")
       (if (geben-dbgp-in-session)
 	  (geben-dbgp-command-stop)
-	(gud-basic-call "")))           ; for bug of Xdebug 2.0.3 with stop command,
+	(gud-basic-call ""))) ;; for bug of Xdebug 2.0.3 with stop command,
 					; stopping state comes after stopped state.
      ((equal status "stopped")
       (gud-basic-call "")
@@ -775,7 +985,8 @@ A source object forms a property list with three properties
       (run-hooks 'geben-session-finished-hook)
       (message "GEBEN debugging session is finished."))
      ((equal status "break")
-      (geben-dbgp-command-stack-get)))))
+      (unless err
+	(geben-dbgp-command-stack-get))))))
 
 ;;; command sending
 
@@ -796,9 +1007,55 @@ required for each dbgp command by the protocol specification."
     (let ((cmd (geben-dbgp-cmd-make operand params))
 	  (tid (geben-dbgp-next-tid)))
       (geben-dbgp-cmd-store tid cmd)
-      (gud-call (geben-dbgp-cmd-expand tid cmd))
+      (gud-basic-call (geben-dbgp-cmd-expand tid cmd))
       tid)))
 
+;;; redirection
+
+(defvar geben-dbgp-redirect-bufferp nil)
+
+(defun geben-dbgp-init-redirects ()
+  (when geben-dbgp-redirect-stdout-current
+    (geben-dbgp-command-stdout geben-dbgp-redirect-stdout-current))
+  (when geben-dbgp-redirect-stderr-current
+    (geben-dbgp-command-stderr geben-dbgp-redirect-stderr-current)))
+
+(defun geben-dbgp-redirect-stream (type encoding content)
+  (let ((bufname (geben-dbgp-redirect-buffer-name type)))
+    (when bufname
+      (let* ((buf (or (get-buffer bufname)
+		      (progn
+			(with-current-buffer (get-buffer-create bufname)
+			  (set (make-local-variable 'geben-dbgp-redirect-bufferp) t)
+			  (setq buffer-undo-list t)
+			  (run-hook-with-args 'geben-dbgp-redirect-buffer-init-hook)
+			  (current-buffer)))))
+	     (outwin (display-buffer buf t t)))
+	(with-current-buffer buf
+	  (insert (decode-coding-string
+		   (if (string= "base64" encoding)
+		       (base64-decode-string content)
+		     content)
+		   geben-dbgp-redirect-coding-system)))
+	(save-selected-window
+	  (select-window outwin)
+	  (goto-char (point-max)))))))
+
+(defun geben-dbgp-redirect-buffer-name (type)
+  (when (or (and (eq type :stdout) geben-dbgp-redirect-stdout-current)
+	    (and (eq type :stderr) geben-dbgp-redirect-stderr-current))
+    (if geben-dbgp-redirect-combine-current
+	"*GEBEN output*"
+      (concat "*GEBEN " (if (eq :stdout type) "stdout" "stderr")))))
+
+(defmacro geben-dbgp-redirect-buffer-existp ()
+  `(or (get-buffer (geben-dbgp-redirect-buffer-name :stdout))
+       (get-buffer (geben-dbgp-redirect-buffer-name :stderr))))
+
+(defmacro geben-dbgp-redirect-buffer-visiblep ()
+  `(let ((buf (geben-dbgp-redirect-buffer-existp)))
+     (and buf (get-buffer-window buf))))
+  
 ;;;
 ;;; command/response handlers
 ;;;
@@ -934,20 +1191,12 @@ required for each dbgp command by the protocol specification."
 
 (defun geben-dbgp-response-stack-get (cmd msg)
   "A response message handler for a \`stack_get\' command."
-  (let* ((stack (car-safe (xml-get-children msg 'stack)))
+  (setq geben-dbgp-current-stack (xml-get-children msg 'stack))
+  (let* ((stack (car-safe geben-dbgp-current-stack))
 	 (fileuri (xml-get-attribute stack 'filename))
-	 (lineno (xml-get-attribute stack'lineno))
-	 local-path)
+	 (lineno (xml-get-attribute stack'lineno)))
     (when (and fileuri lineno)
-      (if (setq local-path (geben-dbgp-get-local-path-of fileuri t))
-	  (geben-dbgp-indicate-current-line local-path lineno)
-	(geben-dbgp-cmd-sequence
-	 (geben-dbgp-command-source fileuri)
-	 `(lambda (cmd msg err)
-	    (when (not err)
-	      (geben-dbgp-indicate-current-line
-	       (geben-dbgp-get-local-path-of ,fileuri) ,lineno)
-	      (gud-display-frame))))))))
+      (geben-dbgp-indicate-current-line fileuri lineno))))
 
 ;;; eval
 
@@ -990,10 +1239,17 @@ required for each dbgp command by the protocol specification."
 	   
 ;;; source
 
+(defun geben-dbgp-regularize-fileuri (fileuri)
+  ;; for bug of Xdebug 2.0.3 and below:
+  (replace-regexp-in-string "%28[0-9]+%29%20:%20runtime-created%20function$" ""
+			    fileuri))
+  
 (defun geben-dbgp-command-source (fileuri)
   "Send source command.
 FILEURI is a uri of the target file of a debuggee site."
-  (geben-dbgp-send-command "source" (cons "-f" fileuri)))
+  (geben-dbgp-send-command "source" (cons "-f"
+					  (geben-dbgp-regularize-fileuri fileuri))))
+
 
 (defun geben-dbgp-response-source (cmd msg)
   "A response message handler for a \`source\' command."
@@ -1023,6 +1279,32 @@ FILEURI is a uri of the target file of a debuggee site."
   "A response message handler for a \`feature_get\' command."
   (and t nil))
 
+;;; redirect
+
+(defun geben-dbgp-command-stdout (mode)
+  (let ((m (plist-get '(nil 0 :disable 0 :redirect 1 :intercept 2) mode)))
+    (when (and m)
+      (geben-dbgp-send-command "stdout" (cons "-c" m)))))
+
+(defun geben-dbgp-command-stderr (mode)
+  (let ((m (plist-get '(nil 0 :disable 0 :redirect 1 :intercept 2) mode)))
+    (when (and m)
+      (geben-dbgp-send-command "stderr" (cons "-c" m)))))
+
+(defun geben-dbgp-response-stdout (cmd msg)
+  (setq geben-dbgp-redirect-stdout-current
+	(case (geben-dbgp-cmd-param-arg cmd "-c")
+	  (0 nil)
+	  (1 :redirect)
+	  (2 :intercept))))
+
+(defun geben-dbgp-response-stderr (cmd msg)
+  (setq geben-dbgp-redirect-stderr-current
+	(case (geben-dbgp-cmd-param-arg cmd "-c")
+	  (0 nil)
+	  (1 :redirect)
+	  (2 :intercept))))
+
 ;;;
 
 (defun geben-dbgp-prepare-source-file (fileuri)
@@ -1032,6 +1314,7 @@ debugging session, do nothing.
 If `geben-debug-target-remotep' is non-nil or not exists locally, fetch
 the file from remote site using \`source\' command then stores in
 a GEBEN's temporal direcotory tree."
+  (setq fileuri (geben-dbgp-regularize-fileuri fileuri))
   (unless (geben-dbgp-get-local-path-of fileuri)
     (let ((local-path (geben-make-local-path fileuri)))
       (if (or geben-debug-target-remotep
@@ -1139,10 +1422,27 @@ After visited it invokes `geben-after-visit-hook'."
 			 (find-file-noselect path)))))
     (when buffer
       (prog1
-	  (pop-to-buffer buffer)
+	  (geben-dbgp-display-window buffer)
 	(run-hook-with-args 'geben-after-visit-hook buffer)))))
 
-(defun geben-dbgp-indicate-current-line (local-path lineno)
+(defun geben-dbgp-indicate-current-line (fileuri lineno &optional display-bufferp)
+  (let ((local-path (geben-dbgp-get-local-path-of
+		     (geben-dbgp-regularize-fileuri fileuri) t)))
+    (if local-path
+	(prog1
+	    (geben-dbgp-indicate-current-line-1 local-path lineno)
+	  (when display-bufferp
+	    (gud-display-frame)))
+      (geben-dbgp-cmd-sequence
+       (geben-dbgp-command-source fileuri)
+       `(lambda (cmd msg err)
+	  (when (not err)
+	    (geben-dbgp-indicate-current-line-1
+	     (geben-dbgp-get-local-path-of ,fileuri) ,lineno)
+	    (gud-display-frame))))
+      nil)))
+
+(defun geben-dbgp-indicate-current-line-1 (local-path lineno)
   "Display current debugging position marker."
   (setq gud-last-frame
 	(cons local-path (string-to-number lineno)))
@@ -1165,6 +1465,7 @@ If the optional argument COMMAND-LINE is nil, the value of
     (gud-common-init geben-dbgp-command-line nil
 		     'geben-dbgp-marker-filter 'geben-dbgp-find-file)
     (with-current-buffer gud-comint-buffer
+      (rename-buffer "*GEBEN process*" t)
       (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
       (add-hook 'kill-buffer-hook 'geben-dbgp-buffer-killed nil t))
 
@@ -1254,15 +1555,21 @@ If the optional argument COMMAND-LINE is nil, the value of
   "Visit to a local source code file."
   (when (file-exists-p path)
     (let ((buf (find-file-noselect path)))
-      (pop-to-buffer buf)
+      (geben-dbgp-display-window buf)
       (run-hook-with-args 'geben-after-visit-hook buf)
       buf)))
+
+(defun geben-enter-geben-mode (buf)
+  (with-current-buffer buf
+    (or (not (fboundp 'geben-mode))
+	geben-mode
+	(geben-mode t))))
 
 ;; -- [utility]--
 
 (defun geben-flatten (x)
   "Make cons X to a flat list."
-  (labels ((rec (x acc)
+  (flet ((rec (x acc)
 		(cond ((null x) acc)
 		      ((atom x) (cons x acc))
 		      (t (rec (car x) (rec (cdr x) acc))))))

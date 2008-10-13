@@ -1,3 +1,20 @@
+Version 0.13 (2008-10-13)
+
+  Visible changes:
+  * new commands added:
+    - geben-backtrace
+    - geben-where
+    - geben-set-redirect
+  * custom variables added:
+    - geben-display-window-function
+    - geben-dbgp-redirect-stdout
+    - geben-dbgp-redirect-stderr
+    - geben-dbgp-redirect-combine
+    - geben-dbgp-redirect-coding-system
+    - geben-dbgp-redirect-buffer-init-hook
+  * fixed: compiling error on Emacs 21.4 in `defface' definition.
+  * changed: renamed DBGp client's buffer name to `*GEBEN process*.
+
 Version 0.12 (2008-10-08)
 
   Visible changes:
@@ -7,7 +24,7 @@ Version 0.12 (2008-10-08)
   * Now GEBEN sets/unsets breakpoint even in off session state.
   * fixed: Make GEBEN do not send commands while off session state.
   * fixed: Increasing breakpoints by entering debugging session.
-  * 
+
 Version 0.11 (2008-10-08)
 
   * fixed: Byte compiled geben.el could raise undefined

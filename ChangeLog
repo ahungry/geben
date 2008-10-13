@@ -1,7 +1,38 @@
+2008-10-13  reedom  <reedom_@users.sourceforge.net>
+
+        * [ADD] New command 'geben-where'.
+                Assigned to `w' key in geben-mode.
+        * [CHG] Renamed DBGp client's buffer name to
+                `*GEBEN process*.
+
+2008-10-11  reedom  <reedom_@users.sourceforge.net>
+    
+        * [ADD] STDOUT and STDERR redirection features.
+        * [ADD] New command `geben-set-redirect'.
+                Assigned to `t' key in geben-mode.
+        * [ADD] Custom variable `geben-dbgp-redirect-stdout'.
+        * [ADD] Custom variable `geben-dbgp-redirect-stderr'.
+        * [ADD] Custom variable `geben-dbgp-redirect-combine'.
+        * [ADD] Custom variable `geben-dbgp-redirect-coding-system'.
+        * [ADD] Custom variable `geben-dbgp-redirect-buffer-init-hook'.
+    
+2008-10-10  reedom  <reedom_@users.sourceforge.net>
+
+        * [ADD] Backtrace display feature.
+        * [ADD] New command `geben-backtrace'.
+                Assigned to `d' key in geben-mode.
+        * [ADD] Custom variable `geben-display-window-function'.
+        * [FIX] `defface' caused an error on Emacs 21.4 because of using
+                the newly added attribute `min-color'.
+    
+2008-10-09  reedom  <reedom_@users.sourceforge.net>
+
+        * [ADD] Variable `geben-dbgp-current-stack'.
+
 2008-10-08  reedom  <reedom_@users.sourceforge.net>
 
         * [FIX] Fixed increasing breakpoints as often as entering
-	        debugging session.
+            debugging session.
         * [UPD] Now GEBEN sets/unsets breakpoint in off session state.
         * [FIX] Make GEBEN do not send commands while off session state.
         * [ADD] New argument QUIT to `geben' command. It can be specified
