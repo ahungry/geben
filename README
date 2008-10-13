@@ -108,6 +108,18 @@ Here is an illustration.
 6. If you felt you'd debugged enough, it's time to quit GEBEN.
    To quit GEBEN, type: C-u M-x geben
 
+Known Issues
+------------
+
+* Xdebug, version of at least 2.0.3, does not support STDERR
+  command feature so that STDERR redirection feature does not
+  work expectedly.
+
+* Xdebug, version of at least 2.0.3, does not implement dbgp:
+  scheme feature so that with `step-in' command into a lambda
+  function (you can create it with `create_function' in PHP)
+  the cursor position is located at invalid line.
+
 SUPPORT
 -------
 

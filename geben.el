@@ -529,6 +529,20 @@ from \`redirect', \`intercept' and \`disabled'."
 (defvar geben-dbgp-current-stack nil
   "Current stack list of the debuggee script.")
 
+(defface geben-backtrace-fileuri
+  '((((class color) (background dark))
+     (:foreground "Green" :weight bold))
+    (((class color)) (:foreground "green" :weight bold))
+    (t (:weight bold)))
+  "Face used to highlight fileuri in backtrace buffer."
+  :group 'geben-highlighting-faces)
+
+(defface geben-backtrace-lineno
+  '((t :inherit font-lock-variable-name-face))
+  "Face for displaying line numbers in backtrace buffer."
+  :group 'compilation
+  :version "22.1")
+
 (defun geben-dbgp-backtrace ()
   "Display backtrace."
   (unless (geben-dbgp-in-session)
@@ -547,9 +561,9 @@ from \`redirect', \`intercept' and \`disabled'."
 	       (beg (point)))
 	  (insert (format "%s:%s: %s\n" fileuri lineno where))
 	  (put-text-property beg (+ beg (length fileuri))
-			     'face "compilation-info")
+			     'face "geben-backtrace-fileuri")
 	  (put-text-property (+ beg (length fileuri) 1) (+ beg (length fileuri) 1 (length lineno))
-			     'face "compilation-line-number")
+			     'face "geben-backtrace-lineno")
 	  (put-text-property beg (1- (point))
 			     'geben-stack-frame
 			     (list :fileuri fileuri :lineno lineno))))
@@ -1052,9 +1066,9 @@ required for each dbgp command by the protocol specification."
   `(or (get-buffer (geben-dbgp-redirect-buffer-name :stdout))
        (get-buffer (geben-dbgp-redirect-buffer-name :stderr))))
 
-(defmacro geben-dbgp-redirect-buffer-visiblep ()
-  `(let ((buf (geben-dbgp-redirect-buffer-existp)))
-     (and buf (get-buffer-window buf))))
+(defun geben-dbgp-redirect-buffer-visiblep ()
+  (let ((buf (geben-dbgp-redirect-buffer-existp)))
+    (and buf (get-buffer-window buf))))
   
 ;;;
 ;;; command/response handlers

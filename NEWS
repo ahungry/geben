@@ -12,6 +12,9 @@ Version 0.13 (2008-10-13)
     - geben-dbgp-redirect-combine
     - geben-dbgp-redirect-coding-system
     - geben-dbgp-redirect-buffer-init-hook
+  * custom face added:
+    - geben-backtrace-fileuri
+    - geben-backtrace-lineno
   * fixed: compiling error on Emacs 21.4 in `defface' definition.
   * changed: renamed DBGp client's buffer name to `*GEBEN process*.
 

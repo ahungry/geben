@@ -2,8 +2,11 @@
 
         * [ADD] New command 'geben-where'.
                 Assigned to `w' key in geben-mode.
-        * [CHG] Renamed DBGp client's buffer name to
-                `*GEBEN process*.
+        * [ADD] New face `geben-backtrace-fileuri'.
+        * [ADD] New face `geben-backtrace-lineno'.
+        * [CHG] Renamed DBGp client's buffer name to `*GEBEN process*.
+        * [FIX] Macro version of `geben-dbgp-redirect-buffer-visiblep'
+                causes runtime error on Emacs 22.1.1.
 
 2008-10-11  reedom  <reedom_@users.sourceforge.net>
     
