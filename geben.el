@@ -540,7 +540,7 @@ from \`redirect', \`intercept' and \`disabled'."
 (defface geben-backtrace-lineno
   '((t :inherit font-lock-variable-name-face))
   "Face for displaying line numbers in backtrace buffer."
-  :group 'compilation
+  :group 'geben-highlighting-faces
   :version "22.1")
 
 (defun geben-dbgp-backtrace ()
