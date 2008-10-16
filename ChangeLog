@@ -1,3 +1,7 @@
+2008-10-15  reedom  <reedom_@users.sourceforge.net>
+        
+        * [FIX] Runtime errors on Emacs 21.4.
+        
 2008-10-13  reedom  <reedom_@users.sourceforge.net>
         
         * [CHG] Improved redirection buffer scrolling behavior.

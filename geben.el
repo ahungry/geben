@@ -3,7 +3,7 @@
 ;; Filename: geben.el
 ;; Author: reedom <reedom_@users.sourceforge.net>
 ;; Maintainer: reedom <reedom_@users.sourceforge.net>
-;; Version: 0.13
+;; Version: 0.14
 ;; URL: http://sourceforge.net/projects/geben/
 ;; Keywords: DBGp, debugger, php, Xdebug, python, Komodo
 ;; Compatibility: Emacs 21.4
@@ -105,7 +105,8 @@ Typical functions are `pop-to-buffer' and `switch-to-buffer'."
   "Display a buffer anywhere in a window, depends on the circumstance."
   `(if (geben-dbgp-redirect-buffer-visiblep)
        (progn
-	 (if (buffer-local-value 'geben-dbgp-redirect-bufferp (current-buffer))
+	 (if (and (boundp 'geben-dbgp-redirect-bufferp)
+		  geben-dbgp-redirect-bufferp)
 	     (pop-to-buffer ,buf)
 	   (switch-to-buffer ,buf)))
      (funcall geben-display-window-function ,buf)))
@@ -552,7 +553,6 @@ from \`redirect', \`intercept' and \`disabled'."
       (setq buffer-read-only nil)
       (buffer-disable-undo)
       (erase-buffer)
-      (next-error-follow-minor-mode t)
       (dotimes (i (length geben-dbgp-current-stack))
 	(let* ((stack (second (nth i geben-dbgp-current-stack)))
 	       (fileuri (geben-dbgp-regularize-fileuri (cdr (assq 'filename stack))))
@@ -594,15 +594,19 @@ from \`redirect', \`intercept' and \`disabled'."
   (setq mode-name "GEBEN backtrace")
   (set (make-local-variable 'revert-buffer-function)
        (lambda (a b) nil))
-  (add-hook 'change-major-mode-hook 'font-lock-defontify nil t)
+  (and (fboundp 'font-lock-defontify)
+       (add-hook 'change-major-mode-hook 'font-lock-defontify nil t))
   (setq next-error-function 'geben-backtrace-next-error)
-  (run-mode-hooks 'geben-backtrace-mode-hook))
+  (if (fboundp 'run-mode-hooks)
+      (run-mode-hooks 'geben-backtrace-mode-hook)
+    (run-hooks 'geben-backtrace-mode-hook)))
 
 (defalias 'geben-backtrace-mode-mouse-goto 'geben-backtrace-mode-goto)
 (defun geben-backtrace-mode-goto (&optional event)
   (interactive (list last-nonmenu-event))
   (let ((stack-frame
-         (if (null event)
+         (if (or (null event)
+		 (not (listp event)))
              ;; Actually `event-end' works correctly with a nil argument as
              ;; well, so we could dispense with this test, but let's not
              ;; rely on this undocumented behavior.
@@ -910,7 +914,11 @@ A source object forms a property list with three properties
   
 (defun geben-dbgp-reset ()
   (setq gud-last-frame nil)
-  (setq gud-overlay-arrow-position nil)
+  (cond
+   ((boundp 'gud-overlay-arrow-position)
+    (setq gud-overlay-arrow-position nil))
+   ((boundp 'overlay-arrow-position)
+    (setq overlay-arrow-position nil)))
   (maphash (lambda (fileuri source)
 	     (geben-dbgp-cleanup-file source))
 	   geben-dbgp-source-hash)
@@ -1445,6 +1453,9 @@ After visited it invokes `geben-after-visit-hook'."
 	  (geben-dbgp-display-window buffer)
 	(run-hook-with-args 'geben-after-visit-hook buffer)))))
 
+(defun geben-dbgp-massage-args (file args)
+  args)
+
 (defun geben-dbgp-indicate-current-line (fileuri lineno &optional display-bufferp)
   (let ((local-path (geben-dbgp-get-local-path-of
 		     (geben-dbgp-regularize-fileuri fileuri) t)))
@@ -1482,11 +1493,12 @@ If the optional argument COMMAND-LINE is nil, the value of
     (when (and gud-comint-buffer
 	       (buffer-name gud-comint-buffer))
       (kill-buffer gud-comint-buffer))
-    (gud-common-init geben-dbgp-command-line nil
+    (gud-common-init geben-dbgp-command-line 'geben-dbgp-massage-args
 		     'geben-dbgp-marker-filter 'geben-dbgp-find-file)
     (with-current-buffer gud-comint-buffer
       (rename-buffer "*GEBEN process*" t)
-      (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
+      (and (fboundp 'set-process-query-on-exit-flag)
+	   (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil))
       (add-hook 'kill-buffer-hook 'geben-dbgp-buffer-killed nil t))
 
     (set (make-local-variable 'gud-minor-mode) 'geben)

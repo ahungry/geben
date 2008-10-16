@@ -1,4 +1,4 @@
-GEBEN-0.13
+GEBEN-0.14
 ----------
 
 GEBEN is a PHP source code level debugger running under Emacs.
@@ -10,7 +10,7 @@ GEBEN is alpha stage in this release. Only a few features are covered.
 BIG CHANGES
 -----------
 
-- From this release GEBEN does not depend on CEDET emacs library.
+- Since version 0.1 GEBEN does not depend on CEDET emacs library.
   If you have installed CEDET previously only for GEBEN-pre-alpha, you
   can uninstall CEDET if you want.
 - Now GEBEN lisp package forms a monolithic file.
