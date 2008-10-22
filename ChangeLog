@@ -1,3 +1,20 @@
+2008-10-22  reedom  <reedom_@users.sourceforge.net>
+
+        * [ADD] Supports a kind of breakpoint features found in
+                DBGp specification.
+        * [ADD] New command `geben-breakpoint-menu' and related
+                commands to set a kind of breakpoint.
+                Assigned to `B' key in geben-mode.
+        * [ADD] New command `geben-breakpoint-list' and related
+                commands to display defined breakpoint list.
+                Assigned to `C-c b' key in geben-mode.
+        * [ADD] New face `geben-breakpoint-fileuri'.
+        * [ADD] New face `geben-breakpoint-lineno'.
+        * [ADD] New face `geben-breakpoint-function'.
+        * [ADD] Custom variable `geben-dbgp-feature-list'.
+        * [DEL] Custom variable `geben-dbgp-feature-alist' is
+                now obsolete.
+        
 2008-10-15  reedom  <reedom_@users.sourceforge.net>
         
         * [FIX] Runtime errors on Emacs 21.4.
