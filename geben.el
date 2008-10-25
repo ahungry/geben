@@ -1,9 +1,9 @@
 ;;; geben.el --- PHP source code level debugger
 ;; 
 ;; Filename: geben.el
-;; Author: reedom <reedom_@users.sourceforge.net>
-;; Maintainer: reedom <reedom_@users.sourceforge.net>
-;; Version: 0.15
+;; Author: reedom <fujinaka.tohru@gmail.com>
+;; Maintainer: reedom <fujinaka.tohru@gmail.com>
+;; Version: 0.16
 ;; URL: http://sourceforge.net/projects/geben/
 ;; Keywords: DBGp, debugger, php, Xdebug, python, Komodo
 ;; Compatibility: Emacs 21.4
@@ -393,6 +393,9 @@ It will break at next breakpoint, or stops at the end of the script."
   (interactive)
   (geben-dbgp-command-stop))
 
+(defvar geben-dbgp-breakpoint-types '(:line :call :return :exception :conditional)
+  "Store breakpoint types supported by the current debugger engine.")
+
 (defun geben-breakpoint-menu (arg)
   "Set a breakpoint interactively.
 Script debugger engine may support a kind of breakpoints, which
@@ -446,9 +449,10 @@ hit-value interactively.
 			(string-to-number
 			 (read-string "Number of hit to break: ")))
 		    hit-value))
-    (plist-put cmd :hit-value (and (numberp hit-value)
-				   (<= 0 hit-value)
-				   hit-value))
+    (plist-put cmd :hit-value (if (and (numberp hit-value)
+				       (<= 0 hit-value)
+				       hit-value)
+				  0))
     (geben-dbgp-command-breakpoint-set cmd))
 
 (defun geben-set-breakpoint-line (fileuri lineno &optional hit-value)
@@ -465,21 +469,23 @@ hit-value interactively."
 			(geben-dbgp-get-local-path-of fileuri)
 		      (buffer-file-name (current-buffer)))))
     (geben-set-breakpoint-common hit-value
-				 (geben-dbgp-bp-make-line
-				  (or fileuri
-				      (geben-dbgp-find-fileuri local-path)
-				      (geben-dbgp-find-fileuri (file-truename local-path))
-				      (concat "file://" (file-truename local-path)))
-				  (or (numberp lineno)
-				      (geben-what-line))
+				 (geben-dbgp-bp-make
+				  :line
+				  :fileuri (or fileuri
+					       (geben-dbgp-find-fileuri local-path)
+					       (geben-dbgp-find-fileuri (file-truename local-path))
+					       (concat "file://" (file-truename local-path)))
+				  :lineno (or (numberp lineno)
+					      (geben-what-line))
 				  :local-path local-path
 				  :overlay t))))
 
 (defvar geben-set-breakpoint-call-history nil)
+(defvar geben-set-breakpoint-fileuri-history nil)
 (defvar geben-set-breakpoint-exception-history nil)
 (defvar geben-set-breakpoint-condition-history nil)
 
-(defun geben-set-breakpoint-call (name &optional hit-value)
+(defun geben-set-breakpoint-call (name &optional fileuri hit-value)
   "Set a breakpoint to break at when entering function/method named NAME.
 For a class method, specify NAME like \"MyClass::MyMethod\".
 For an instance method, do either like \"MyClass::MyMethod\" or
@@ -494,12 +500,20 @@ hit-value interactively."
   (interactive (list
 		(read-string "Name: " ""
 			     'geben-set-breakpoint-call-history)
+		(unless (member geben-dbgp-target-language '(:php :ruby))
+		  ;; at this present some debugger engines' implementation is buggy:
+		  ;; some requires fileuri and some don't accept it.
+		  (read-string "fileuri: " 
+			       (concat "file://" (file-truename (buffer-file-name (current-buffer))))
+			       'geben-set-breakpoint-fileuri-history))
 		current-prefix-arg))
   (when (string< "" name)
     (geben-set-breakpoint-common hit-value
-				 (geben-dbgp-bp-make-call name))))
+				 (geben-dbgp-bp-make :call
+						     :function name
+						     :fileuri fileuri))))
 
-(defun geben-set-breakpoint-return (name hit-value)
+(defun geben-set-breakpoint-return (name &optional fileuri hit-value)
   "Set a breakpoint to break after returned from a function/method named NAME.
 For a class method, specify NAME like \"MyClass::MyMethod\".
 For an instance method, do either like \"MyClass::MyMethod\" or
@@ -514,10 +528,18 @@ hit-value interactively."
   (interactive (list
 		(read-string "Name: " ""
 			     'geben-set-breakpoint-call-history)
+		(unless (member geben-dbgp-target-language '(:php :ruby))
+		  ;; at this present some debugger engines' implementations are buggy:
+		  ;; some requires fileuri and some don't accept it.
+		  (read-string "fileuri: " 
+			       (concat "file://" (file-truename (buffer-file-name (current-buffer))))
+			       'geben-set-breakpoint-fileuri-history))
 		current-prefix-arg))
   (when (string< "" name)
     (geben-set-breakpoint-common hit-value
-				 (geben-dbgp-bp-make-return name))))
+				 (geben-dbgp-bp-make :return
+						     :function name
+						     :fileuri fileuri))))
 
 (defun geben-set-breakpoint-exception (name &optional hit-value)
   "Set a breakpoint to break at when an exception named NAME is occurred.
@@ -534,7 +556,8 @@ hit-value interactively."
 			     'geben-set-breakpoint-exception-history)
 		current-prefix-arg))
   (geben-set-breakpoint-common hit-value
-			       (geben-dbgp-bp-make-exception name)))
+			       (geben-dbgp-bp-make :exception
+						   :exception name)))
    
 (defun geben-set-breakpoint-conditional (expr fileuri &optional lineno hit-value)
   "Set a breakpoint to break at when the expression EXPR is true in the file FILEURI.
@@ -554,10 +577,12 @@ hit-value interactively."
 		current-prefix-arg))
   
   (geben-set-breakpoint-common hit-value
-			       (geben-dbgp-bp-make-conditional expr fileuri
-							       :lineno (and (stringp lineno)
-									    (string-match "^[0-9]+$" lineno)
-									    (string-to-number lineno)))))
+			       (geben-dbgp-bp-make :conditional
+						   :expression expr
+						   :fileuri fileuri
+						   :lineno (and (stringp lineno)
+								(string-match "^[0-9]+$" lineno)
+								(string-to-number lineno)))))
 
 (defun geben-set-breakpoint-watch (expr &optional hit-value)
   "Set a breakpoint to break on write of the variable or address.
@@ -573,7 +598,8 @@ hit-value interactively."
 			     'geben-set-breakpoint-condition-history)
 		current-prefix-arg))
   (geben-set-breakpoint-common hit-value
-			       (geben-dbgp-bp-make-watch expr)))
+			       (geben-dbgp-bp-make :watch
+						   :expression expr)))
 
 (defun geben-unset-breakpoint-line ()
   "Clear a breakpoint set at the current line."
@@ -764,12 +790,10 @@ of the function is passed to feature_set DBGp command."
 	      param)
 	   (error "`geben-dbgp-feature-alist' has invalid entry: %S" entry)))))))
 
-(defvar geben-dbgp-breakpoint-types '(:line)
-  "Store breakpoint types supported by the current debugger engine.")
-
 (defun geben-dbgp-store-breakpoint-types (cmd msg err)
   (setq geben-dbgp-breakpoint-types nil)
-  (unless err
+  (when (and (not err)
+	     (equal "1" (xml-get-attribute msg 'supported)))
     (let ((types (car (xml-node-children msg))))
       (dolist (type (split-string (or types "") " "))
 	(cond
@@ -785,8 +809,17 @@ of the function is passed to feature_set DBGp command."
 	  (add-to-list 'geben-dbgp-breakpoint-types :conditional))
 	 ((string= type "watch")
 	  (add-to-list 'geben-dbgp-breakpoint-types :watch)))))
-    (when (geben-dbgp-xdebug-p)
-      (add-to-list 'geben-dbgp-breakpoint-types :exception))))
+    (when geben-dbgp-xdebug-p
+      ;; Xdebug 2.0.3 supports the following types but they aren't
+      ;; included in the response. Push them in the list manually.
+      (add-to-list 'geben-dbgp-breakpoint-types :exception)
+      (add-to-list 'geben-dbgp-breakpoint-types :conditional)))
+  (unless geben-dbgp-breakpoint-types
+    ;; Some debugger engines are buggy;
+    ;; they don't return breakpoint types correctly.
+    ;; To them put all of types to the list.
+    (setq geben-dbgp-breakpoint-types '(:line :call :return :exception :conditional :watch))))
+  
 
 ;; -- [tid] --
 
@@ -805,12 +838,16 @@ of the function is passed to feature_set DBGp command."
 (defvar geben-dbgp-init-info nil
   "Store dbgp initial message.")
 
+(defvar geben-dbgp-xdebug-p nil
+  "Non-nil means the debugger engine is Xdebug.")
+
+(defvar geben-dbgp-target-language nil
+  "Store the current debugger's target language.
+This will be set at run-time.
+Possible values: :php :ruby :python etc.")
+
 (defun geben-dbgp-in-session ()
   (not (null geben-dbgp-init-info)))
-
-(defun geben-dbgp-xdebug-p ()
-  (and (member "Xdebug" (geben-flatten geben-dbgp-init-info))
-       t))
   
 ;; -- [stack] --
 
@@ -1014,7 +1051,7 @@ A source object forms a property list with three properties
     (when buf
       (with-current-buffer buf
 	(when geben-mode
-	  (geben-mode nil))
+	  (geben-mode 0))
 	;;	  Not implemented yet
 	;; 	  (and (buffer-modified-p buf)
 	;; 	       (switch-to-buffer buf)
@@ -1050,115 +1087,39 @@ A source object forms a property list with three properties
 
 (defun geben-dbgp-bp= (lhs rhs)
   "Return t if two breakpoint object point same thing."
-  (let ((type (plist-get lhs :type)))
-    (when (eq type (plist-get rhs :type))
-      (case type
-	(:line (geben-dbgp-bp-line= lhs rhs))
-	(:call (geben-dbgp-bp-call= lhs rhs))
-	(:return (geben-dbgp-bp-return= lhs rhs))
-	(:exception (geben-dbgp-bp-exception= lhs rhs))
-	(:conditional (geben-dbgp-bp-conditional= lhs rhs))
-	(:watch (geben-dbgp-bp-watch= lhs rhs))))))
-
-(defun geben-dbgp-bp-line= (lhs rhs)
-  (and (eq (plist-get lhs :type) :line)
-       (eq (plist-get lhs :type)
+  (and (eq (plist-get lhs :type)
 	   (plist-get rhs :type))
-       (string= (plist-get lhs :fileuri)
-		(plist-get rhs :fileuri))
-       (eq (plist-get lhs :lineno)
-	   (plist-get rhs :lineno))))
+       (equal (plist-get lhs :fileuri)
+	      (plist-get rhs :fileuri))
+       (equal (plist-get lhs :lineno)
+	      (plist-get rhs :lineno))
+       (equal (plist-get lhs :function)
+	      (plist-get rhs :function))
+       (equal (plist-get lhs :exception)
+	      (plist-get rhs :exception))
+       (equal (plist-get lhs :expression)
+	      (plist-get rhs :expression))))
 
-(defun geben-dbgp-bp-call= (lhs rhs)
-  (and (eq (plist-get lhs :type) :call)
-       (eq (plist-get lhs :type)
-	   (plist-get rhs :type))
-       (string= (plist-get lhs :function)
-		(plist-get rhs :function))))
-
-(defun geben-dbgp-bp-return= (lhs rhs)
-  (and (eq (plist-get lhs :type) :return)
-       (eq (plist-get lhs :type)
-	   (plist-get rhs :type))
-       (string= (plist-get lhs :function)
-		(plist-get rhs :function))))
-
-(defun geben-dbgp-bp-exception= (lhs rhs)
-  (and (eq (plist-get lhs :type) :exception)
-       (eq (plist-get lhs :type)
-	   (plist-get rhs :type))
-       (string= (plist-get lhs :exception)
-		(plist-get rhs :exception))))
-
-(defun geben-dbgp-bp-conditional= (lhs rhs)
-  (and (eq (plist-get lhs :type) :conditional)
-       (eq (plist-get lhs :type)
-	   (plist-get rhs :type))
-       (string= (plist-get lhs :expression)
-		(plist-get rhs :expression))
-       (string= (plist-get lhs :fileuri)
-		(plist-get rhs :fileuri))
-       (let ((lno (plist-get lhs :lineno))
-	     (rno (plist-get rhs :lineno)))
-	 (equal (and (stringp lno) lno)
-		(and (stringp rno) rno)))))
-
-(defun geben-dbgp-bp-watch= (lhs rhs)
-  (and (eq (plist-get lhs :type) :watch)
-       (eq (plist-get lhs :type)
-	   (plist-get rhs :type))
-       (string= (plist-get lhs :expression)
-		(plist-get rhs :expression))))
-
-(defun geben-dbgp-bp-make-line (fileuri lineno &rest params)
+(defun geben-dbgp-bp-make (type &rest params)
   "Create a new line breakpoint object."
-  (let ((bp (append (list :type :line
-				:fileuri fileuri
-				:lineno lineno)
-		    params)))
-    (unless (plist-get params :overlay)
+  (let ((bp (append (list :type type) params)))
+    (mapc (lambda (prop)
+	    (when (stringp (plist-get bp prop))
+	      (plist-put bp prop (string-to-number (plist-get bp prop)))))
+	  '(:lineno :hit-value))
+    (when (and (plist-get params :fileuri)
+	       (plist-get params :lineno)
+	       (not (plist-get params :overlay)))
       (geben-dbgp-bp-setup-overlay bp))
+    (let ((name (plist-get params :function)))
+      (when (and name
+		 geben-dbgp-xdebug-p
+		 (string-match "[:->]" name))
+	(plist-put bp :class (replace-regexp-in-string "^\\([^:-]+\\).*" "\\1" name))
+	(plist-put bp :method (replace-regexp-in-string "^.*[:>]+" "" name))))
+    (unless (plist-get params :state)
+      (plist-put bp :state "enabled"))
     bp))
-
-(defun geben-dbgp-bp-make-call (name &rest params)
-  "Create a new call breakpoint object."
-  (let ((bp (append (list :type :call
-				:function name)
-		    params)))
-    (when (and (geben-dbgp-xdebug-p)
-	       (string-match "[:->]" name))
-      (plist-put bp :class (replace-regexp-in-string "^\\([^:-]+\\).*" "\\1" name))
-      (plist-put bp :method (replace-regexp-in-string "^.*[:>]+" "" name)))
-    bp))
-
-(defun geben-dbgp-bp-make-return (name &rest params)
-  "Create a new return breakpoint object."
-  (let ((bp (apply 'geben-dbgp-bp-make-call name params)))
-    (plist-put bp :type :return)
-    bp))
-
-(defun geben-dbgp-bp-make-exception (name &rest params)
-  "Create a new exception breakpoint object."
-  (append (list :type :exception
-		      :exception name)
-	  params))
-
-(defun geben-dbgp-bp-make-conditional (expr fileuri &rest params)
-  "Create a new conditional breakpoint object."
-  (let ((bp (append (list :type :conditional
-				:expression expr
-				:fileuri fileuri)
-		    params)))
-    (if (and (plist-get params :lineno)
-	     (not (plist-get params :overlay)))
-	(geben-dbgp-bp-setup-overlay bp))
-    bp))
-
-(defun geben-dbgp-bp-make-watch (expr &rest params)
-  "Create a new watch breakpoint object."
-  (append (list :type :watch
-		      :expression expr)
-	  params))
 
 (defun geben-dbgp-bp-setup-overlay (bp)
   "Create an overlay for a breakpoint BP."
@@ -1215,9 +1176,10 @@ With this callback GEBEN tracks displacements of line breakpoints."
 
 (defun geben-dbgp-bp-lineno-find (fileuri lineno)
   "Find a line breakpoint placed at LINENO in a file FILEURI."
-  (let ((tmpbp (geben-dbgp-bp-make-line fileuri lineno :overlay t)))
+  (let ((tmpbp (geben-dbgp-bp-make :line
+				   :fileuri fileuri :lineno lineno :overlay t)))
     (find-if (lambda (bp)
-	       (geben-dbgp-bp-line= bp tmpbp))
+	       (geben-dbgp-bp= bp tmpbp))
 	     geben-dbgp-breakpoints)))
 
 (defun geben-dbgp-bp-find (id-or-obj)
@@ -1253,23 +1215,22 @@ before proceeding."
 
 (defun geben-dbgp-bp-finalize (bp)
   "Finalize a breakpoint object."
-  (and (eq (plist-get bp :type) :line)
-       (geben-overlayp (plist-get bp :overlay))
-       (geben-overlay-delete (plist-get bp :overlay)))
+  (when (geben-overlayp (plist-get bp :overlay))
+    (geben-overlay-delete (plist-get bp :overlay)))
   bp)
 
 (defun geben-dbgp-bp-find-file-hook ()
   "A callback function invoked when emacs visits a new file.
 GEBEN may place overlay markers if there are line breakpoints in
 the file."
-  (and (geben-dbgp-in-session)
-       (not geben-show-breakpoints-debugging-only)
-       (let ((buf (current-buffer)))
-	 (mapc (lambda (bp)
-		 (and (eq (plist-get bp :type) :line)
-		      (eq (find-buffer-visiting (or (plist-get bp :local-path) "")) buf)
-		      (geben-dbgp-bp-setup-overlay bp)))
-	       geben-dbgp-breakpoints))))
+  (when (or (geben-dbgp-in-session)
+	    (not geben-show-breakpoints-debugging-only))
+    (let ((buf (current-buffer)))
+      (mapc (lambda (bp)
+	      (and (eq (plist-get bp :type) :line)
+		   (eq (find-buffer-visiting (or (plist-get bp :local-path) "")) buf)
+		   (geben-dbgp-bp-setup-overlay bp)))
+	    geben-dbgp-breakpoints))))
 
 (add-hook 'find-file-hooks 'geben-dbgp-bp-find-file-hook)
 
@@ -1375,53 +1336,44 @@ Key mapping and other information is described its help page."
   "Create breakpoint objects according to the result of `breakpoint_list'."
   (unless err
     (dolist (msg-bp (xml-get-children msg 'breakpoint))
-      (let* ((type (xml-get-attribute msg-bp 'type))
-	     (bp (geben-dbgp-bp-find (xml-get-attribute msg-bp 'id))))
+      (let* ((id (xml-get-attribute msg-bp 'id))
+	     (bp (geben-dbgp-bp-find id)))
 	(unless bp
-	  (setq bp
-		(cond
-		 ((string= type "line")
-		  (geben-dbgp-bp-make-line
-		   (xml-get-attribute msg-bp 'filename)
-		   (string-to-number (xml-get-attribute msg-bp 'lineno))
-		   :local-path (geben-dbgp-get-local-path-of (xml-get-attribute msg-bp 'filename))
-		   :id (xml-get-attribute msg-bp 'id)))
-		 ((string= type "call")
-		  (geben-dbgp-bp-make-call
-		   (if (xml-get-attribute msg-bp 'class)
-		       (format "%s::%s"
-			       (xml-get-attribute msg-bp 'class)
-			       (xml-get-attribute msg-bp 'function))
-		     (xml-get-attribute msg-bp 'function))
-		   :id (xml-get-attribute msg-bp 'id)))
-		 ((string= type "call")
-		  (geben-dbgp-bp-make-return
-		   (if (xml-get-attribute msg-bp 'class)
-		       (format "%s::%s"
-			       (xml-get-attribute msg-bp 'class)
-			       (xml-get-attribute msg-bp 'function))
-		     (xml-get-attribute msg-bp 'function))
-		   :id (xml-get-attribute msg-bp 'id)))
-		 ((string= type "exception")
-		  (geben-dbgp-bp-make-exception
-		   (xml-get-attribute msg-bp 'exception)
-		   :id (xml-get-attribute msg-bp 'id)))
-		 ((string= type "conditional")
-		  (geben-dbgp-bp-make-conditional
-		   (xml-get-attribute msg-bp 'expression)
-		   (xml-get-attribute msg-bp 'fileuri)
-		   :lineno (xml-get-attribute msg-bp 'lineno)
-		   :id (xml-get-attribute msg-bp 'id)))
-		 ((string= type "watch")
-		  (geben-dbgp-bp-make-watch
-		   (xml-get-attribute msg-bp 'expression)
-		   :id (xml-get-attribute msg-bp 'id)))))
-	  (when bp
-	    (geben-dbgp-bp-add bp)))
+	  (let* ((type (intern-soft (concat ":" (xml-get-attribute msg-bp 'type))))
+		 (fileuri (xml-get-attribute msg-bp 'filename))
+		 (lineno (xml-get-attribute msg-bp 'lineno))
+		 (function (xml-get-attribute msg-bp 'function))
+		 (class (xml-get-attribute msg-bp 'class))
+		 (method function)
+		 (exception (xml-get-attribute msg-bp 'exception))
+		 (expression (xml-get-attribute msg-bp 'expression))
+		 (state (xml-get-attribute msg-bp 'state))
+		 (local-path (and fileuri
+				  (or (geben-dbgp-get-local-path-of fileuri)
+				      (geben-temp-path-for-fileuri fileuri)))))
+	    (when (stringp lineno)
+	      (setq lineno (string-to-number lineno))
+	      (when (floatp lineno) ;; debugger engine may return invalid number.
+		(setq lineno 1)))
+	    (when class
+	      (setq function (format "%s::%s" (or function "") class)))
+	    (when expression
+	      (setq expression (base64-decode-string expression)))
+	    (geben-dbgp-bp-add
+	     (setq bp (geben-dbgp-bp-make type
+					  :id id
+					  :fileuri fileuri
+					  :lineno lineno
+					  :class class
+					  :method method
+					  :function function
+					  :exception exception
+					  :expression expression
+					  :state state
+					  :local-path local-path)))))
 	(when bp
 	  (plist-put bp :hit-count (string-to-number (xml-get-attribute msg-bp 'hit_count)))
-	  (plist-put bp :hit-value (string-to-number (xml-get-attribute msg-bp 'hit_value)))
-	  (plist-put bp :state (xml-get-attribute msg-bp 'state)))))))
+	  (plist-put bp :hit-value (string-to-number (xml-get-attribute msg-bp 'hit_value))))))))
 
 (defun geben-dbgp-breakpoint-list-1 (breakpoints displayp)
   (let ((buf (get-buffer-create geben-breakpoint-list-buffer-name))
@@ -1449,33 +1401,28 @@ Key mapping and other information is described its help page."
 		(if (geben-dbgp-in-session)
 		    (insert (format "%2s/%-2s  "
 				    (or (plist-get bp :hit-count) "?")
-				    (or (case (plist-get bp :hit-value)
-					  (nil "?")
-					  (0 "*"))
-					(plist-get bp :hit-value)))))
-		(case (plist-get bp :type)
-		  (:line
-		   (insert (format "%s:%s"
-				   (propertize (plist-get bp :fileuri)
-					       'face 'geben-breakpoint-fileuri)
-				   (propertize (number-to-string (plist-get bp :lineno))
-					       'face 'geben-breakpoint-lineno))))
-		  (:call
-		   (insert (propertize (plist-get bp :function)
-				       'face 'geben-breakpoint-function)))
-		  (:return
-		   (insert (propertize (plist-get bp :function)
-				       'face 'geben-breakpoint-function)))
-		  (:exception
-		   (insert (propertize (plist-get bp :exception)
-				       'face 'geben-breakpoint-function)))
-		  (:conditional
-		   (insert (format "\"%s\" %s:%s"
-				   (plist-get bp :expression)
-				   (plist-get bp :fileuri)
-				   (or (plist-get bp :lineno) "*"))))
-		  (:watch
-		   (insert (format "\"%s\"" (plist-get bp :expression)))))
+				    (let ((hit-value (plist-get bp :hit-value)))
+				      (cond
+				       ((null hit-value) "?")
+				       ((zerop hit-value) "*")
+				       (t hit-value)))))
+		  (insert " "))
+		(when (plist-get bp :function)
+		  (insert (propertize (plist-get bp :function)
+				      'face 'geben-breakpoint-function))
+		  (insert " "))
+		(when (plist-get bp :exception)
+		  (insert (propertize (plist-get bp :exception)
+				      'face 'geben-breakpoint-function))
+		  (insert " "))
+		(when (plist-get bp :expression)
+		  (insert (format "\"%s\" " (plist-get bp :expression))))
+		(when (plist-get bp :fileuri)
+		  (insert (format "%s:%s"
+				  (propertize (plist-get bp :fileuri)
+					      'face 'geben-breakpoint-fileuri)
+				  (propertize (format "%s" (or (plist-get bp :lineno) "*"))
+					      'face 'geben-breakpoint-lineno))))
 		(insert "\n")
 		(put-text-property (save-excursion (forward-line -1) (point))
 				   (point)
@@ -1490,6 +1437,8 @@ Key mapping and other information is described its help page."
       (goto-char (point-min)))
     (when displayp
       (geben-dbgp-display-window buf))))
+
+(defvar geben-dbgp-current-status nil)
 
 (defun geben-dbgp-breakpoint-list-refresh ()
   (when (and (eq 'break geben-dbgp-current-status)
@@ -1611,10 +1560,10 @@ The buffer commands are:
 
 ;;--
 
-(defun geben-session-init-variables ()
+(defun geben-session-reset-variables ()
   "Initialize session variables."
+  (geben-dbgp-set-initial-message nil)
   (setq geben-dbgp-stack nil
-	geben-dbgp-init-info nil
 	geben-dbgp-current-stack nil)
   (clrhash geben-dbgp-cmd-hash)
   (clrhash geben-dbgp-source-hash))
@@ -1632,7 +1581,7 @@ The buffer commands are:
 	   geben-dbgp-source-hash)
   (when geben-show-breakpoints-debugging-only
     (geben-dbgp-bp-hide-breakpoints))
-  (geben-session-init-variables)
+  (geben-session-reset-variables)
   (ignore-errors
     (geben-delete-directory-tree (geben-temp-dir))))
 
@@ -1647,8 +1596,6 @@ The buffer commands are:
   "*Hook running at when the geben debugging session is finished."
   :group 'geben
   :type 'hook)
-
-(defvar geben-dbgp-current-status nil)
 
 (defun geben-dbgp-update-session-status (msg)
   "Remain current status of the current session."
@@ -1680,14 +1627,25 @@ The buffer commands are:
 
 (defun geben-dbgp-handle-init (msg)
   "Handle a init message."
-  (setq geben-dbgp-init-info msg)
   (run-hooks 'geben-session-starting-hook)
+  (add-hook 'geben-dbgp-disconnect-hook #'geben-dbgp-reset)
+  (geben-dbgp-set-initial-message msg)
   (geben-dbgp-init-features)
   (geben-dbgp-init-redirects)
   (geben-dbgp-restore-breakpoints)
   (geben-dbgp-prepare-source-file (xml-get-attribute msg 'fileuri))
   (geben-dbgp-command-step-into))
 
+(defun geben-dbgp-set-initial-message (msg)
+  (setq geben-dbgp-init-info msg)
+  (when msg
+    (setq geben-dbgp-xdebug-p
+	  (and (member "Xdebug" (geben-flatten geben-dbgp-init-info)) t))
+    (setq geben-dbgp-target-language
+	  (let ((lang (xml-get-attribute msg 'language)))
+	    (when (string< "" lang)
+	      (intern (concat ":" (downcase lang))))))))
+  
 (defun geben-dbgp-handle-response (msg)
   "Handle a response message."
   (let* ((tid (geben-dbgp-tid-of msg))
@@ -1724,11 +1682,11 @@ The buffer commands are:
      ((equal status "stopping")
       (if (geben-dbgp-in-session)
 	  (geben-dbgp-command-stop)
+	;;(geben-dbgp-command-stop)))
 	(gud-basic-call ""))) ;; for bug of Xdebug 2.0.3 with stop command,
 					; stopping state comes after stopped state.
      ((equal status "stopped")
       (gud-basic-call "")
-      (geben-dbgp-reset)
       (run-hooks 'geben-session-finished-hook)
       (message "GEBEN debugging session is finished."))
      ((equal status "break")
@@ -1887,100 +1845,69 @@ required for each dbgp command by the protocol specification."
 						  0))
 				   (cons "-o" ">="))
 	(let ((params
-	       (case (plist-get bp :type)
-		 (:line
-		  (list (cons "-t" "line")
-			(cons "-f" (plist-get bp :fileuri))
-			(cons "-n" (plist-get bp :lineno))))
-		 (:call
-		  (append '(("-t" . "call"))
-			  (if (and (geben-dbgp-xdebug-p)
-				   (plist-get bp :class))
-			      (list (cons "-a" (plist-get bp :class))
-				    (cons "-m" (plist-get bp :method)))
-			    (list (cons "-m" (plist-get bp :function))))))
-		 (:return
-		  (append '(("-t" . "return"))
-			  (if (and (geben-dbgp-xdebug-p)
-				   (plist-get bp :class))
-			      (list (cons "-a" (plist-get bp :class))
-				    (cons "-m" (plist-get bp :method)))
-			    (list (cons "-m" (plist-get bp :function))))))
-		 (:exception
-		  (list (cons "-t" "exception")
-			(cons "-x" (plist-get bp :exception))))
-		 (:conditional
-		  (remove nil
-			  (list (cons "-t" "conditional")
-				(cons "-f" (plist-get bp :fileuri))
-				(and (plist-get bp :lineno)
-				     (cons "-n" (plist-get bp :lineno)))
-				(cons "--" (plist-get bp :expression)))))
-		 (:watch
-		  (list (cons "-t" "watch")
-			(cons "--" (plist-get bp :expression))))
-		 (t
-		  (error "unknown type breakpoint: %S" bp)))))
+	       (remove nil
+		       (list
+			(cons "-t"
+			      (substring (symbol-name (plist-get bp :type)) 1))
+			(and (plist-get bp :fileuri)
+			     (cons "-f" (plist-get bp :fileuri)))
+			(and (plist-get bp :lineno)
+			     (cons "-n" (plist-get bp :lineno)))
+			(and (plist-get bp :class)
+			     geben-dbgp-xdebug-p
+			     (cons "-a" (plist-get bp :class)))
+			(and (plist-get bp :function)
+			     (if (and geben-dbgp-xdebug-p
+				      (plist-get bp :method))
+				 (cons "-m" (plist-get bp :method))
+			       (cons "-m" (plist-get bp :function))))
+			(and (plist-get bp :exception)
+			     (cons "-x" (plist-get bp :exception)))
+			(cons "-h" (or (plist-get bp :hit-value) 0))
+			(cons "-o" ">=")
+			(cons "-s" (or (plist-get bp :state)
+				       "enabled"))
+			(cons "-r" (or (plist-get bp :run-once)
+				       0))
+			(and (plist-get bp :expression)
+			     (cons "--"
+				   (base64-encode-string
+				    (plist-get bp :expression))))))))
 	  (when params
-	    (when (plist-get bp :hit-value)
-	      (setq params
-		    (append (list (cons "-h" (plist-get bp :hit-value))
-				  (cons "-o" ">="))
-		    params)))
 	    (apply 'geben-dbgp-send-command "breakpoint_set" params)))))))
 
 (defun geben-dbgp-response-breakpoint-set (cmd msg)
   "A response message handler for \`breakpoint_set\' command."
-  (let* ((type (geben-dbgp-cmd-param-arg cmd "-t"))
+  (let* ((type (intern (concat ":" (geben-dbgp-cmd-param-arg cmd "-t"))))
 	 (id (xml-get-attribute msg 'id))
-	 (hit-value (geben-dbgp-cmd-param-arg cmd "-h"))
 	 (fileuri (geben-dbgp-cmd-param-arg cmd "-f"))
 	 (lineno (geben-dbgp-cmd-param-arg cmd "-n"))
-	 (exception (geben-dbgp-cmd-param-arg cmd "-x"))
 	 (function (geben-dbgp-cmd-param-arg cmd "-m"))
 	 (class (geben-dbgp-cmd-param-arg cmd "-a"))
-	 (expr (geben-dbgp-cmd-param-arg cmd "--"))
+	 (method function)
+	 (exception (geben-dbgp-cmd-param-arg cmd "-x"))
+	 (expression (geben-dbgp-cmd-param-arg cmd "--"))
+	 (hit-value (geben-dbgp-cmd-param-arg cmd "-h"))
+	 (state (geben-dbgp-cmd-param-arg cmd "-s"))
 	 (local-path (and fileuri
 			  (or (geben-dbgp-get-local-path-of fileuri)
 			      (geben-temp-path-for-fileuri fileuri))))
 	 bp)
-    (cond
-     ((equal type "line")
-      (geben-dbgp-bp-add
-       (geben-dbgp-bp-make-line fileuri lineno
-				:hit-value hit-value
-				:local-path local-path
-				:id id)))
-     ((equal type "call")
-      (geben-dbgp-bp-add
-       (geben-dbgp-bp-make-call (if class
-				    (format "%s::%s" class function)
-				  function)
-				:hit-value hit-value
-				:id id)))
-     ((equal type "return")
-      (geben-dbgp-bp-add
-       (geben-dbgp-bp-make-return (if class
-				      (format "%s::%s" class function)
-				    function)
+    (when expression
+      (setq expression (base64-decode-string expression)))
+    (geben-dbgp-bp-add
+     (setq bp (geben-dbgp-bp-make type
+				  :id id
+				  :fileuri fileuri
+				  :lineno lineno
+				  :class class
+				  :method method
+				  :function function
+				  :exception exception
+				  :expression expression
 				  :hit-value hit-value
-				  :id id)))
-     ((equal type "exception")
-      (geben-dbgp-bp-add
-       (geben-dbgp-bp-make-exception exception
-				     :hit-value hit-value
-				     :id id)))
-     ((equal type "conditional")
-      (geben-dbgp-bp-add
-       (geben-dbgp-bp-make-conditional expr fileuri
-				       :hit-value hit-value
-				       :lineno lineno
-				       :id id)))
-     ((equal type "watch")
-      (geben-dbgp-bp-add
-       (geben-dbgp-bp-make-watch expr
-				 :hit-value hit-value
-				 :id id)))))
+				  :local-path local-path
+				  :state state))))
   (geben-dbgp-breakpoint-list-refresh))
 
 (defun geben-dbgp-response-breakpoint-update (cmd msg)
@@ -2020,8 +1947,8 @@ required for each dbgp command by the protocol specification."
 
 (defun geben-dbgp-response-breakpoint-remove (cmd msg)
   "A response message handler for \`breakpoint_remove\' command."
-  (let* ((bp (car-safe (xml-get-children msg 'breakpoint)))
-	 (id (xml-get-attribute bp 'id)))
+  (let* ((id (geben-dbgp-cmd-param-arg cmd "-d"))
+	 (bp (geben-dbgp-bp-find id)))
     (geben-dbgp-bp-remove id)
     (geben-dbgp-breakpoint-list-refresh)))
 
@@ -2199,7 +2126,7 @@ object, which contains information about a source file, to
     (if source
 	(plist-get source :local-path)
       ;; not konwn for the current session.
-      (let ((local-path (replace-regexp-in-string "^file://" "" fileuri)))
+      (let ((local-path (replace-regexp-in-string "^file:\\(//\\)?" "" fileuri)))
 	(when (and (not geben-debug-target-remotep)
 		   (file-exists-p local-path))
 	  (when (and markp
@@ -2221,6 +2148,9 @@ XMLized dbgp protocol message."
   :type 'hook
   :group 'geben)
 
+(defvar geben-dbgp-disconnect-hook nil
+  "Hook running at when the session connection is disconnected.")
+
 (defun geben-dbgp-process-chunk (xml)
   "Process a DBGp response chunk."
   (run-hook-with-args 'geben-dbgp-process-hook (car-safe xml)))
@@ -2235,23 +2165,26 @@ XMLized dbgp protocol message."
 Parse STRING, find xml chunks, convert them to xmlized lisp objects
 and call `geben-dbgp-process-chunk' with each chunk."
   (setq gud-marker-acc (concat gud-marker-acc (delete ?\r string)))
-  (let (xml-list
+  (let (xml-list disconnectp
         (output ""))
     (flet ((parse-xml (str)
                       (with-temp-buffer
                         (insert str)
                         (ignore-errors (xml-parse-region (point-min) (point-max)))))
            (xmlize (offset)
-                   (when (string-match "<\\?xml" gud-marker-acc offset)
-                     (let* ((beg (match-beginning 0))
-                            (end (and (string-match "^\\((cmd)\\|<\\?xml\\)" gud-marker-acc (1+ beg))
-                                      (match-beginning 0))))
-                       (if (null end)
-                           beg
-                         (let ((xml (parse-xml (substring gud-marker-acc beg end))))
-                           (when xml
-                             (add-to-list 'xml-list xml t))
-                           (xmlize end)))))))
+                   (if (string-match "<\\?xml" gud-marker-acc offset)
+		       (let* ((beg (match-beginning 0))
+			      (end (and (string-match "^\\((cmd)\\|<\\?xml\\)" gud-marker-acc (1+ beg))
+					(match-beginning 0))))
+			 (if (null end)
+			     beg
+			   (let ((xml (parse-xml (substring gud-marker-acc beg end))))
+			     (when xml
+			       (add-to-list 'xml-list xml t))
+			     (xmlize end))))
+		     (when (string-match "^Disconnect\\n*" gud-marker-acc offset)
+		       (setq disconnectp t)
+		       (match-end 0)))))
       (setq output
             (let ((acc-pos (xmlize 0)))
               ;; Does the remaining text look like it might end with the
@@ -2270,6 +2203,8 @@ and call `geben-dbgp-process-chunk' with each chunk."
                     gud-marker-acc
                   (setq gud-marker-acc "")))))
       (mapc #'geben-dbgp-process-chunk xml-list))
+    (when disconnectp
+      (run-hooks 'geben-dbgp-disconnect-hook))
     output))
 
 (defun geben-dbgp-find-file (path)
@@ -2374,7 +2309,7 @@ If the optional argument COMMAND-LINE is nil, the value of
 
 (defun geben-temp-path-for-fileuri (fileuri)
   "Generate path string from FILEURI to store files temporarily."
-  (when (string-match "^file:///?" fileuri)
+  (when (string-match "^file:\\(//\\)?" fileuri)
     (expand-file-name (substring fileuri (match-end 0)) (geben-temp-dir))))
 
 (defun geben-temp-store (path source)
@@ -2416,7 +2351,7 @@ If the optional argument COMMAND-LINE is nil, the value of
 
 (defun geben-make-local-path (fileuri)
   "Make a path string correspond to FILEURI."
-  (let ((local-path (replace-regexp-in-string "^file://" "" fileuri)))
+  (let ((local-path (replace-regexp-in-string "^file:\\(//\\)?" "" fileuri)))
     (when (eq system-type 'windows-nt)
       (require 'url-util)
       (setq local-path (url-unhex-string (substring local-path 1))))
@@ -2436,7 +2371,7 @@ If the optional argument COMMAND-LINE is nil, the value of
   (with-current-buffer buf
     (or (not (fboundp 'geben-mode))
 	geben-mode
-	(geben-mode t))))
+	(geben-mode 1))))
 
 ;; -- [utility]--
 

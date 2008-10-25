@@ -1,3 +1,12 @@
+Version 0.16 (2008-10-25)
+
+  Visible changes:
+  * support for Komodo Debugger Extentions are added.
+
+  * fixed: improved session finishing handling.
+  * fixed: when reopen a debuggee script file which has any line
+           breakpoints, GEBEN had failed to restore overlays.
+  
 Version 0.15 (2008-10-22)
 
   Visible changes:
