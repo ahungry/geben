@@ -786,12 +786,10 @@ Or to each own buffer."
 (defun geben-dbgp-bp-hide-overlays ()
   "Hide breakpoint overlays."
   (mapc (lambda (bp)
-	  (case (plist-get bp :type)
-	    (:line
-	     (let ((overlay (plist-get bp :overlay)))
-	       (and (geben-overlayp overlay)
-		    (geben-overlay-livep overlay)
-		    (geben-overlay-put overlay 'face nil))))))
+	  (let ((overlay (plist-get bp :overlay)))
+	    (and (geben-overlayp overlay)
+		 (geben-overlay-livep overlay)
+		 (geben-overlay-put overlay 'face nil))))
 	geben-dbgp-breakpoints))
 
 (defun geben-dbgp-bp-overlay-modified (overlay afterp beg end &optional len)
@@ -883,7 +881,7 @@ the file."
 	    (not geben-show-breakpoints-debugging-only))
     (let ((buf (current-buffer)))
       (mapc (lambda (bp)
-	      (and (eq (plist-get bp :type) :line)
+	      (and (plist-get bp :lineno)
 		   (eq (find-buffer-visiting (or (plist-get bp :local-path) "")) buf)
 		   (geben-dbgp-bp-setup-overlay bp)))
 	    geben-dbgp-breakpoints))))
@@ -1184,10 +1182,10 @@ The buffer commands are:
 	       (get-text-property (point) 'geben-bp)))))
         same-window-buffer-names
         same-window-regexps)
-    (when (eq :line (plist-get bp :type))
-      (geben-dbgp-indicate-current-line (plist-get bp :fileuri)
-					(plist-get bp :lineno)
-					t))))
+    (let ((fileuri (plist-get bp :fileuri))
+	  (lineno (plist-get bp :lineno)))
+      (when (and fileuri lineno)
+	(geben-dbgp-indicate-current-line fileuri lineno t)))))
 
 (defun geben-breakpoint-list-mode-quit ()
   "Quit and bury the breakpoint list mode buffer."
