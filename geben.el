@@ -4,7 +4,7 @@
 ;; Author: reedom <fujinaka.tohru@gmail.com>
 ;; Maintainer: reedom <fujinaka.tohru@gmail.com>
 ;; Version: 0.16
-;; URL: http://sourceforge.net/projects/geben/
+;; URL: http://code.google.com/p/geben-on-emacs/
 ;; Keywords: DBGp, debugger, php, Xdebug, python, Komodo
 ;; Compatibility: Emacs 21.4
 ;; 
