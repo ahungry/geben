@@ -102,6 +102,16 @@
 
 ;; debuggee scripts
 
+(defcustom geben-session-starting-hook nil
+  "*Hook running at when the geben debugging session is starting."
+  :group 'geben
+  :type 'hook)
+
+(defcustom geben-session-finished-hook nil
+  "*Hook running at when the geben debugging session is finished."
+  :group 'geben
+  :type 'hook)
+
 (defcustom geben-after-visit-hook 'geben-enter-geben-mode
   "*Hook running at when GEBEN visits a debuggee script file.
 Each functions is invoked with an argument BUFFER."
@@ -165,502 +175,6 @@ This includes element and attribute names, processing
 instruction targets and the CDATA keyword in a CDATA section.
 This is not used directly, but only via inheritance by other faces."
   :group 'geben-highlighting-faces)
-
-;; redirect
-
-(defvar geben-dbgp-redirect-stdout-current nil)
-(defvar geben-dbgp-redirect-stderr-current nil)
-(defvar geben-dbgp-redirect-combine-current nil)
-
-(defcustom geben-dbgp-redirect-stdout :redirect
-  "*If non-nil, GEBEN redirects the debuggee script's STDOUT.
-If the value is \`:redirect', then STDOUT goes to both GEBEN and
-default destination.
-If the value is \`:intercept', then STDOUT never goes to the
-regular destination but to GEBEN."
-  :group 'geben
-  :type '(choice (const :tag "Disable" nil)
-		 (const :tag "Redirect" :redirect)
-		 (const :tag "Intercept" :intercept))
-  :set (lambda (sym value)
-	 (setq geben-dbgp-redirect-stdout value
-	       geben-dbgp-redirect-stdout-current value)))
-
-(defcustom geben-dbgp-redirect-stderr :redirect
-  "*If non-nil, GEBEN redirects the debuggee script's STDERR.
-If the value is \`:redirect', then STDERR goes to both GEBEN and
-default destination.
-If the value is \`:intercept', then STDERR never goes to the
-regular destination but to GEBEN."
-  :group 'geben
-  :type '(choice (const :tag "Disable" nil)
-		 (const :tag "Redirect" :redirect)
-		 (const :tag "Intercept" :intercept))
-  :set (lambda (sym value)
-	 (setq geben-dbgp-redirect-stderr value
-	       geben-dbgp-redirect-stderr-current value)))
-
-(defcustom geben-dbgp-redirect-combine t
-  "*If non-nil, redirection of STDOUT and STDERR go to same buffer.
-Or to each own buffer."
-  :group 'geben
-  :type 'boolean
-  :set (lambda (sym value)
-	 (setq geben-dbgp-redirect-combine value
-	       geben-dbgp-redirect-combine-current value)))
-
-(defcustom geben-dbgp-redirect-coding-system 'utf-8-dos
-  "*Coding system for decoding redirect content."
-  :group 'geben
-  :type 'coding-system)
-
-(defcustom geben-dbgp-redirect-buffer-init-hook nil
-  "*Hook running at when a redirection buffer is created."
-  :group 'geben
-  :type 'hook)
-
-;;
-;; -- [interactive commands] --
-;;
-
-;;; #autoload
-(defun geben (&optional quit)
-  "Start GEBEN, a PHP source level debugger.
-Prefixed with \\[universal-argument], GEBEN quits immediately.
-
-GEBEN communicates with script servers, located anywhere local or
-remote, in DBGp protocol (e.g. PHP with Xdebug extension)
-to help you debugging your script with some valuable features:
- - continuation commands like \`step in\', \`step out\', ...
- - a kind of breakpoints like \`line no\', \`function call\' and
-   \`function return\'.
- - evaluation
- - stack dump
- - etc.
-
-The script servers should be DBGp protocol enabled.
-Ask to your script server administrator about this setting up
-issue.
-
-The variable `geben-dbgp-command-line' is a command line to
-execute a DBGp protocol client command. GEBEN communicates with
-script servers through this command.
-
-Once you've done these setup operation correctly, run GEBEN first
-and your script on your script server second. After some
-negotiation GEBEN will display your script's entry source code.
-The debugging session is started.
-
-In the debugging session the source code buffers are under the
-minor mode  `geben-mode'. Key mapping and other information is
-described its help page."
-  (interactive "P")
-  (if quit
-      (and gud-comint-buffer
-	   (buffer-name gud-comint-buffer)
-	   (kill-buffer gud-comint-buffer))
-    (geben-dbgp)))
-
-;;-------------------------------------------------------------
-;;  geben-mode
-;;-------------------------------------------------------------
-
-(defvar geben-mode-map nil)
-(unless geben-mode-map
-  (setq geben-mode-map (make-sparse-keymap "geben"))
-  ;; control
-  (define-key geben-mode-map " " 'geben-step-again)
-  (define-key geben-mode-map "g" 'geben-run)
-  ;;(define-key geben-mode-map "G" 'geben-Go-nonstop-mode)
-  (define-key geben-mode-map "t" 'geben-set-redirect)
-  ;;(define-key geben-mode-map "T" 'geben-Trace-fast-mode)
-  ;;(define-key geben-mode-map "c" 'geben-continue-mode)
-  ;;(define-key geben-mode-map "C" 'geben-Continue-fast-mode)
-
-  ;;(define-key geben-mode-map "f" 'geben-forward) not implemented
-  ;;(define-key geben-mode-map "f" 'geben-forward-sexp)
-  ;;(define-key geben-mode-map "h" 'geben-goto-here)
-
-  ;;(define-key geben-mode-map "I" 'geben-instrument-callee)
-  (define-key geben-mode-map "i" 'geben-step-into)
-  (define-key geben-mode-map "o" 'geben-step-over)
-  (define-key geben-mode-map "r" 'geben-step-out)
-
-  ;; quitting and stopping
-  (define-key geben-mode-map "q" 'geben-stop)
-  ;;(define-key geben-mode-map "Q" 'geben-top-level-nonstop)
-  ;;(define-key geben-mode-map "a" 'abort-recursive-edit)
-  (define-key geben-mode-map "S" 'geben-stop)
-
-  ;; breakpoints
-  (define-key geben-mode-map "b" 'geben-set-breakpoint-line)
-  (define-key geben-mode-map "B" 'geben-breakpoint-menu)
-  (define-key geben-mode-map "u" 'geben-unset-breakpoint-line)
-  (define-key geben-mode-map "\C-cb" 'geben-breakpoint-list)
-  ;;(define-key geben-mode-map "B" 'geben-next-breakpoint)
-  ;;(define-key geben-mode-map "x" 'geben-set-conditional-breakpoint)
-  ;;(define-key geben-mode-map "X" 'geben-set-global-break-condition)
-
-  ;; evaluation
-  (define-key geben-mode-map "e" 'geben-eval-expression)
-  ;;(define-key geben-mode-map "\C-x\C-e" 'geben-eval-last-sexp)
-  ;;(define-key geben-mode-map "E" 'geben-visit-eval-list)
-
-  ;; views
-  (define-key geben-mode-map "w" 'geben-where)
-  ;;(define-key geben-mode-map "v" 'geben-view-outside) ;; maybe obsolete??
-  ;;(define-key geben-mode-map "p" 'geben-bounce-point)
-  ;;(define-key geben-mode-map "P" 'geben-view-outside) ;; same as v
-  ;;(define-key geben-mode-map "W" 'geben-toggle-save-windows)
-
-  ;; misc
-  ;;(define-key geben-mode-map "?" 'geben-help)
-  (define-key geben-mode-map "d" 'geben-backtrace)
-
-  ;;(define-key geben-mode-map "-" 'negative-argument)
-
-  ;; statistics
-  ;;(define-key geben-mode-map "=" 'geben-temp-display-freq-count)
-
-  ;; GUD bindings
-  (define-key geben-mode-map "\C-c\C-s" 'geben-step-into)
-  (define-key geben-mode-map "\C-c\C-n" 'geben-step-over)
-  (define-key geben-mode-map "\C-c\C-c" 'geben-run)
-
-  (define-key geben-mode-map "\C-x " 'geben-set-breakpoint-line)
-  (define-key geben-mode-map "\C-c\C-d" 'geben-unset-breakpoint-line)
-  (define-key geben-mode-map "\C-c\C-t" 'geben-set-breakpoint-line)
-  (define-key geben-mode-map "\C-c\C-l" 'geben-where))
-
-(define-minor-mode geben-mode
-  "Minor mode for debugging source code with GEBEN.
-The geben-mode buffer commands:
-\\{geben-mode-map}"
-  nil " *debugging*" geben-mode-map
-  (setq buffer-read-only geben-mode))
-  
-(add-hook 'kill-emacs-hook
-	  (lambda ()
-	    (geben-dbgp-reset)))
-
-(defvar geben-step-type :step-into
-  "Step command of what `geben-step-again' acts.
-This value remains the last step command type either
-`:step-into' or `:step-out'.")
-
-(defun geben-step-again ()
-  "Do either `geben-step-into' or `geben-step-over' what the last time called.
-Default is `geben-step-into'."
-  (interactive)
-  (case geben-step-type
-    (:step-over (geben-step-over))
-    (:step-into (geben-step-into))
-    (t (geben-step-into))))
-     
-(defun geben-step-into ()
-  "Step into the definition of the function or method about to be called.
-If there is a function call involved it will break on the first
-statement in that function"
-  (interactive)
-  (setq geben-step-type :step-into)
-  (geben-dbgp-command-step-into))
-
-(defun geben-step-over ()
-  "Step over the definition of the function or method about to be called.
-If there is a function call on the line from which the command
-is issued then the debugger engine will stop at the statement
-after the function call in the same scope as from where the
-command was issued"
-  (interactive)
-  (setq geben-step-type :step-over)
-  (geben-dbgp-command-step-over))
-
-(defun geben-step-out ()
-  "Step out of the current scope.
-It breaks on the statement after returning from the current
-function."
-  (interactive)
-  (geben-dbgp-command-step-out))
-
-(defun geben-run ()
-  "Start or resumes the script.
-It will break at next breakpoint, or stops at the end of the script."
-  (interactive)
-  (geben-dbgp-command-run))
-
-(defun geben-stop ()
-  "End execution of the script immediately."
-  (interactive)
-  (geben-dbgp-command-stop))
-
-(defvar geben-dbgp-breakpoint-types '(:line :call :return :exception :conditional)
-  "Store breakpoint types supported by the current debugger engine.")
-
-(defun geben-breakpoint-menu (arg)
-  "Set a breakpoint interactively.
-Script debugger engine may support a kind of breakpoints, which
-will be stored in the variable `geben-dbgp-breakpoint-types'
-after a debugging session is started.
-
-This command asks you a breakpoint type and its options.
-Optionally, with a numeric argument you can specify `hit-value'
-\(number of hits to break); \\[universal-argument] 2 \
-\\<geben-mode-map>\\[geben-breakpoint-menu] will set a breakpoint
-with 2 hit-value.
-With just a prefix arg \(\\[universal-argument] \\[geben-breakpoint-menu]), \
-this command will also ask a
-hit-value interactively.
-"
-  (interactive "P")
-  (let ((candidates (remove nil
-			    (mapcar
-			     (lambda (x)
-			       (if (member (car x) geben-dbgp-breakpoint-types) x))
-			     '((:line . "l)Line")
-			       (:call . "c)Call")
-			       (:return . "r)Return")
-			       (:exception . "e)Exception")
-			       (:conditional . "d)Conditional")
-			       (:watch . "w)Watch"))))))
-    (when (null candidates)
-      (error "No breakpoint type is supported by the debugger engine."))
-    (let* ((c (read-char (concat "Breakpoint type: "
-				 (mapconcat
-				  (lambda (x)
-				    (cdr x))
-				  candidates " "))))
-	   (x (find-if (lambda (x)
-			 (eq c (elt (cdr x) 0)))
-		       candidates))
-	   (fn (and x
-		    (intern-soft (concat "geben-set-breakpoint-"
-					 (substring (symbol-name (car x)) 1))))))
-      (unless x
-	(error "Cancelled"))
-      (if (fboundp fn)
-	  (call-interactively fn)
-	(error (concat (symbol-name fn) " is not implemented."))))))
-
-(defun geben-set-breakpoint-common (hit-value cmd)
-  (setq hit-value (if (and (not (null hit-value))
-			   (listp hit-value))
-		      (if (fboundp 'read-number)
-			  (read-number "Number of hit to break: ")
-			(string-to-number
-			 (read-string "Number of hit to break: ")))
-		    hit-value))
-    (plist-put cmd :hit-value (if (and (numberp hit-value)
-				       (<= 0 hit-value)
-				       hit-value)
-				  0))
-    (geben-dbgp-command-breakpoint-set cmd))
-
-(defun geben-set-breakpoint-line (fileuri lineno &optional hit-value)
-  "Set a breakpoint at the current line.
-Optionally, with a numeric argument you can specify `hit-value'
-\(number of hits to break); \\[universal-argument] 2 \
-\\<geben-mode-map>\\[geben-set-breakpoint-line] will set a breakpoint
-with 2 hit-value.
-With just a prefix arg \(\\[universal-argument] \\[geben-set-breakpoint-line]), \
-this command will also ask a
-hit-value interactively."
-  (interactive (list nil nil current-prefix-arg))
-  (let ((local-path (if fileuri
-			(geben-dbgp-get-local-path-of fileuri)
-		      (buffer-file-name (current-buffer)))))
-    (geben-set-breakpoint-common hit-value
-				 (geben-dbgp-bp-make
-				  :line
-				  :fileuri (or fileuri
-					       (geben-dbgp-find-fileuri local-path)
-					       (geben-dbgp-find-fileuri (file-truename local-path))
-					       (concat "file://" (file-truename local-path)))
-				  :lineno (or (numberp lineno)
-					      (geben-what-line))
-				  :local-path local-path
-				  :overlay t))))
-
-(defvar geben-set-breakpoint-call-history nil)
-(defvar geben-set-breakpoint-fileuri-history nil)
-(defvar geben-set-breakpoint-exception-history nil)
-(defvar geben-set-breakpoint-condition-history nil)
-
-(defun geben-set-breakpoint-call (name &optional fileuri hit-value)
-  "Set a breakpoint to break at when entering function/method named NAME.
-For a class method, specify NAME like \"MyClass::MyMethod\".
-For an instance method, do either like \"MyClass::MyMethod\" or
-\"MyClass->MyMethod\".
-Optionally, with a numeric argument you can specify `hit-value'
-\(number of hits to break); \\[universal-argument] 2 \
-\\<geben-mode-map>\\[geben-set-breakpoint-call] will set a breakpoint
-with 2 hit-value.
-With just a prefix arg \(\\[universal-argument] \\[geben-set-breakpoint-call]),
-this command will also ask a
-hit-value interactively."
-  (interactive (list
-		(read-string "Name: " ""
-			     'geben-set-breakpoint-call-history)
-		(unless (member geben-dbgp-target-language '(:php :ruby))
-		  ;; at this present some debugger engines' implementation is buggy:
-		  ;; some requires fileuri and some don't accept it.
-		  (read-string "fileuri: " 
-			       (concat "file://" (file-truename (buffer-file-name (current-buffer))))
-			       'geben-set-breakpoint-fileuri-history))
-		current-prefix-arg))
-  (when (string< "" name)
-    (geben-set-breakpoint-common hit-value
-				 (geben-dbgp-bp-make :call
-						     :function name
-						     :fileuri fileuri))))
-
-(defun geben-set-breakpoint-return (name &optional fileuri hit-value)
-  "Set a breakpoint to break after returned from a function/method named NAME.
-For a class method, specify NAME like \"MyClass::MyMethod\".
-For an instance method, do either like \"MyClass::MyMethod\" or
-\"MyClass->MyMethod\".
-Optionally, with a numeric argument you can specify `hit-value'
-\(number of hits to break); \\[universal-argument] 2 \
-\\<geben-mode-map>\\[geben-set-breakpoint-return] will set a breakpoint
-with 2 hit-value.
-With just a prefix arg \(\\[universal-argument] \\[geben-set-breakpoint-return]),
-this command will also ask a
-hit-value interactively."
-  (interactive (list
-		(read-string "Name: " ""
-			     'geben-set-breakpoint-call-history)
-		(unless (member geben-dbgp-target-language '(:php :ruby))
-		  ;; at this present some debugger engines' implementations are buggy:
-		  ;; some requires fileuri and some don't accept it.
-		  (read-string "fileuri: " 
-			       (concat "file://" (file-truename (buffer-file-name (current-buffer))))
-			       'geben-set-breakpoint-fileuri-history))
-		current-prefix-arg))
-  (when (string< "" name)
-    (geben-set-breakpoint-common hit-value
-				 (geben-dbgp-bp-make :return
-						     :function name
-						     :fileuri fileuri))))
-
-(defun geben-set-breakpoint-exception (name &optional hit-value)
-  "Set a breakpoint to break at when an exception named NAME is occurred.
-Optionally, with a numeric argument you can specify `hit-value'
-\(number of hits to break); \\[universal-argument] 2 \
-\\<geben-mode-map>\\[geben-set-breakpoint-exception] will set a breakpoint
-with 2 hit-value.
-With just a prefix arg \(\\[universal-argument] \\[geben-set-breakpoint-exception]),
-this command will also ask a
-hit-value interactively."
-  (interactive (list
-		(read-string "Exception type: "
-			     "Exception"
-			     'geben-set-breakpoint-exception-history)
-		current-prefix-arg))
-  (geben-set-breakpoint-common hit-value
-			       (geben-dbgp-bp-make :exception
-						   :exception name)))
-   
-(defun geben-set-breakpoint-conditional (expr fileuri &optional lineno hit-value)
-  "Set a breakpoint to break at when the expression EXPR is true in the file FILEURI.
-Optionally, with a numeric argument you can specify `hit-value'
-\(number of hits to break); \\[universal-argument] 2 \
-\\<geben-mode-map>\\[geben-set-breakpoint-conditional] will set a breakpoint
-with 2 hit-value.
-With just a prefix arg \(\\[universal-argument] \\[geben-set-breakpoint-conditional]),
-this command will also ask a
-hit-value interactively."
-  (interactive (list
-		(read-string "Expression: " ""
-			     'geben-set-breakpoint-condition-history)
-		(concat "file://" (file-truename (buffer-file-name (current-buffer))))
-		(read-string "Line number to evaluate (blank means entire file): "
-			     (number-to-string (geben-what-line)))
-		current-prefix-arg))
-  
-  (geben-set-breakpoint-common hit-value
-			       (geben-dbgp-bp-make :conditional
-						   :expression expr
-						   :fileuri fileuri
-						   :lineno (and (stringp lineno)
-								(string-match "^[0-9]+$" lineno)
-								(string-to-number lineno)))))
-
-(defun geben-set-breakpoint-watch (expr &optional hit-value)
-  "Set a breakpoint to break on write of the variable or address.
-Optionally, with a numeric argument you can specify `hit-value'
-\(number of hits to break); \\[universal-argument] 2 \
-\\<geben-mode-map>\\[geben-set-breakpoint-conditional] will set a breakpoint
-with 2 hit-value.
-With just a prefix arg \(\\[universal-argument] \\[geben-set-breakpoint-conditional]),
-this command will also ask a
-hit-value interactively."
-  (interactive (list
-		(read-string "Expression: " ""
-			     'geben-set-breakpoint-condition-history)
-		current-prefix-arg))
-  (geben-set-breakpoint-common hit-value
-			       (geben-dbgp-bp-make :watch
-						   :expression expr)))
-
-(defun geben-unset-breakpoint-line ()
-  "Clear a breakpoint set at the current line."
-  (interactive)
-  (geben-dbgp-command-breakpoint-remove))
-
-(defun geben-breakpoint-list ()
-  "Display breakpoint list.
-The breakpoint list buffer is under `geben-breakpoint-list-mode'.
-Key mapping and other information is described its help page."
-  (interactive)
-  (geben-dbgp-breakpoint-list t))
-
-(defvar geben-eval-history nil)
-
-(defun geben-eval-expression (expr)
-  "Evaluate a given string EXPR within the current execution context."
-  (interactive
-   (progn
-     (list (read-from-minibuffer "Eval: "
-				 nil nil nil 'geben-eval-history))))
-  (geben-dbgp-command-eval expr))
-
-(defun geben-open-file (fileuri)
-  "Open a debugger server side file specified by FILEURI.
-FILEURI forms like as \`file:///path/to/file\'."
-  (interactive (list (read-string "Open file: " "file://")))
-  (geben-dbgp-command-source fileuri))
-
-(defun geben-backtrace ()
-  "Display backtrace list.
-The backtrace list buffer is under `geben-backtrace-mode'.
-Key mapping and other information is described its help page."
-  (interactive)
-  (geben-dbgp-backtrace))
-
-(defun geben-set-redirect (target &optional arg)
-  "Set the debuggee script's output redirection mode.
-This command enables you to redirect the debuggee script's output to GEBEN.
-You can select redirection target from \`stdout', \`stderr' and both of them.
-Prefixed with \\[universal-argument], you can also select redirection mode
-from \`redirect', \`intercept' and \`disabled'."
-  (interactive (list (case (read-char "Redirect: o)STDOUT e)STRERR b)Both")
-		       (?o :stdout)
-		       (?e :stderr)
-		       (?b :both))
-		     current-prefix-arg))
-  (unless target
-    (error "Cancelled"))
-  (let ((mode (if arg
-		  (case (read-char "Mode: r)Redirect i)Intercept d)Disable")
-		    (?r :redirect)
-		    (?i :intercept)
-		    (?d :disable))
-		:redirect)))
-    (unless mode
-      (error "Cancelled"))
-    (when (memq target '(:stdout :both))
-      (geben-dbgp-command-stdout mode))
-    (when (memq target '(:stderr :both))
-      (geben-dbgp-command-stderr mode))))
 
 ;;-------------------------------------------------------------
 ;;  cross emacs overlay definitions
@@ -764,63 +278,6 @@ of the function is passed to feature_set DBGp command."
 			      (const :tag "notify_ok (:get :set)" notify_ok))
 		       sexp)))
 
-(defun geben-dbgp-init-features ()
-  "Configure debugger engine with value of `geben-dbgp-feature-list'."
-  (dolist (entry geben-dbgp-feature-list)
-    (let ((method (car entry))
-	  (name (symbol-name (nth 1 entry)))
-	  (param (nth 2 entry)))
-      (case method
-	(:set 
-	 (let ((value (cond
-		       ((null param) nil)
-		       ((symbolp param)
-			(if (fboundp param)
-			    (funcall param)
-			  (if (boundp param)
-			      (symbol-value param)
-			    (symbol-name param))))
-		       (t param))))
-	   (geben-dbgp-command-feature-set name value)))
-	(:get
-	 (if (and (symbolp param)
-		  (fboundp param))
-	     (geben-dbgp-cmd-sequence
-	      (geben-dbgp-command-feature-get name)
-	      param)
-	   (error "`geben-dbgp-feature-alist' has invalid entry: %S" entry)))))))
-
-(defun geben-dbgp-store-breakpoint-types (cmd msg err)
-  (setq geben-dbgp-breakpoint-types nil)
-  (when (and (not err)
-	     (equal "1" (xml-get-attribute msg 'supported)))
-    (let ((types (car (xml-node-children msg))))
-      (dolist (type (split-string (or types "") " "))
-	(cond
-	 ((string= type "line")
-	  (add-to-list 'geben-dbgp-breakpoint-types :line))
-	 ((string= type "call")
-	  (add-to-list 'geben-dbgp-breakpoint-types :call))
-	 ((string= type "return")
-	  (add-to-list 'geben-dbgp-breakpoint-types :return))
-	 ((string= type "exception")
-	  (add-to-list 'geben-dbgp-breakpoint-types :exception))
-	 ((string= type "conditional")
-	  (add-to-list 'geben-dbgp-breakpoint-types :conditional))
-	 ((string= type "watch")
-	  (add-to-list 'geben-dbgp-breakpoint-types :watch)))))
-    (when geben-dbgp-xdebug-p
-      ;; Xdebug 2.0.3 supports the following types but they aren't
-      ;; included in the response. Push them in the list manually.
-      (add-to-list 'geben-dbgp-breakpoint-types :exception)
-      (add-to-list 'geben-dbgp-breakpoint-types :conditional)))
-  (unless geben-dbgp-breakpoint-types
-    ;; Some debugger engines are buggy;
-    ;; they don't return breakpoint types correctly.
-    ;; To them put all of types to the list.
-    (setq geben-dbgp-breakpoint-types '(:line :call :return :exception :conditional :watch))))
-  
-
 ;; -- [tid] --
 
 (defvar geben-dbgp-tid 30000
@@ -835,6 +292,7 @@ of the function is passed to feature_set DBGp command."
   `(cdr (assoc 'transaction_id (cadr ,msg))))
   
 ;; -- [session] --
+
 (defvar geben-dbgp-init-info nil
   "Store dbgp initial message.")
 
@@ -846,9 +304,24 @@ of the function is passed to feature_set DBGp command."
 This will be set at run-time.
 Possible values: :php :ruby :python etc.")
 
+(defvar geben-dbgp-current-status nil
+  "Store the current session status")
+
 (defun geben-dbgp-in-session ()
   (not (null geben-dbgp-init-info)))
   
+(defun geben-dbgp-update-session-status (msg)
+  "Remain current status of the current session."
+  (case (xml-node-name msg)
+    ('connect
+     (setq geben-dbgp-current-status 'connect))
+    ('init
+     (setq geben-dbgp-current-status 'init))
+    ('response
+     (let ((status (xml-get-attribute msg 'status)))
+       (when (string< "" status)
+	 (setq geben-dbgp-current-status (intern status)))))))
+
 ;; -- [stack] --
 
 (defvar geben-dbgp-current-stack nil
@@ -1050,7 +523,8 @@ A source object forms a property list with three properties
   (let ((buf (find-buffer-visiting (plist-get source :local-path))))
     (when buf
       (with-current-buffer buf
-	(when geben-mode
+	(when (and (boundp 'geben-mode)
+		   (symbol-value 'geben-mode))
 	  (geben-mode 0))
 	;;	  Not implemented yet
 	;; 	  (and (buffer-modified-p buf)
@@ -1062,10 +536,151 @@ A source object forms a property list with three properties
 	  (set-buffer-modified-p nil)
 	  (kill-buffer buf))))))
 
-(defvar geben-dbgp-stack nil
-  "A stack list.")
+;; -- [redirect] --
+
+(defvar geben-dbgp-redirect-stdout-current nil)
+(defvar geben-dbgp-redirect-stderr-current nil)
+(defvar geben-dbgp-redirect-combine-current nil)
+
+(defcustom geben-dbgp-redirect-stdout :redirect
+  "*If non-nil, GEBEN redirects the debuggee script's STDOUT.
+If the value is \`:redirect', then STDOUT goes to both GEBEN and
+default destination.
+If the value is \`:intercept', then STDOUT never goes to the
+regular destination but to GEBEN."
+  :group 'geben
+  :type '(choice (const :tag "Disable" nil)
+		 (const :tag "Redirect" :redirect)
+		 (const :tag "Intercept" :intercept))
+  :set (lambda (sym value)
+	 (setq geben-dbgp-redirect-stdout value
+	       geben-dbgp-redirect-stdout-current value)))
+
+(defcustom geben-dbgp-redirect-stderr :redirect
+  "*If non-nil, GEBEN redirects the debuggee script's STDERR.
+If the value is \`:redirect', then STDERR goes to both GEBEN and
+default destination.
+If the value is \`:intercept', then STDERR never goes to the
+regular destination but to GEBEN."
+  :group 'geben
+  :type '(choice (const :tag "Disable" nil)
+		 (const :tag "Redirect" :redirect)
+		 (const :tag "Intercept" :intercept))
+  :set (lambda (sym value)
+	 (setq geben-dbgp-redirect-stderr value
+	       geben-dbgp-redirect-stderr-current value)))
+
+(defcustom geben-dbgp-redirect-combine t
+  "*If non-nil, redirection of STDOUT and STDERR go to same buffer.
+Or to each own buffer."
+  :group 'geben
+  :type 'boolean
+  :set (lambda (sym value)
+	 (setq geben-dbgp-redirect-combine value
+	       geben-dbgp-redirect-combine-current value)))
+
+(defcustom geben-dbgp-redirect-coding-system 'utf-8-dos
+  "*Coding system for decoding redirect content."
+  :group 'geben
+  :type 'coding-system)
+
+(defcustom geben-dbgp-redirect-buffer-init-hook nil
+  "*Hook running at when a redirection buffer is created."
+  :group 'geben
+  :type 'hook)
+
+(defvar geben-dbgp-redirect-bufferp nil)
+
+(defun geben-dbgp-init-redirects ()
+  "Initialize redirection related variables."
+  (when geben-dbgp-redirect-stdout-current
+    (geben-dbgp-command-stdout geben-dbgp-redirect-stdout-current))
+  (when geben-dbgp-redirect-stderr-current
+    (geben-dbgp-command-stderr geben-dbgp-redirect-stderr-current)))
+
+(defun geben-dbgp-redirect-stream (type encoding content)
+  "Print redirected string to specific buffers."
+  (let ((bufname (geben-dbgp-redirect-buffer-name type)))
+    (when bufname
+      (let* ((buf (or (get-buffer bufname)
+		      (progn
+			(with-current-buffer (get-buffer-create bufname)
+			  (set (make-local-variable 'geben-dbgp-redirect-bufferp) t)
+			  (setq buffer-undo-list t)
+			  (run-hook-with-args 'geben-dbgp-redirect-buffer-init-hook)
+			  (current-buffer)))))
+	     (outwin (display-buffer buf))
+	     save-pos)
+	(with-current-buffer buf
+	  (setq save-pos (and (eq (point) (point-max))
+			      (point)))
+	  (save-excursion
+	    (goto-char (point-max))
+	    (insert (decode-coding-string
+		     (if (string= "base64" encoding)
+			 (base64-decode-string content)
+		       content)
+		     geben-dbgp-redirect-coding-system))))
+	(unless save-pos
+	  (save-selected-window
+	    (select-window outwin)
+	    (goto-char (point-max))))))))
+
+(defun geben-dbgp-redirect-buffer-name (type)
+  "Select buffer name for a redirection type."
+  (when (or (and (eq type :stdout) geben-dbgp-redirect-stdout-current)
+	    (and (eq type :stderr) geben-dbgp-redirect-stderr-current))
+    (cond
+     (geben-dbgp-redirect-combine-current
+      geben-redirect-combine-buffer-name)
+     ((eq :stdout type)
+      geben-redirect-stdout-buffer-name)
+     (t
+      geben-redirect-stderr-buffer-name))))
+
+(defun geben-dbgp-redirect-buffer-existp ()
+  "Check whether any redirection buffer exists."
+  (let (name)
+    (or (and (setq name (geben-dbgp-redirect-buffer-name :stdout))
+	     (get-buffer name))
+	(and (setq name (geben-dbgp-redirect-buffer-name :stderr))
+	     (get-buffer name)))))
+
+(defun geben-dbgp-redirect-buffer-visiblep ()
+  "Check whether any window displays any redirection buffer."
+  (let ((buf (geben-dbgp-redirect-buffer-existp)))
+    (and buf (get-buffer-window buf))))
+  
+(defun geben-dbgp-init-features ()
+  "Configure debugger engine with value of `geben-dbgp-feature-list'."
+  (dolist (entry geben-dbgp-feature-list)
+    (let ((method (car entry))
+	  (name (symbol-name (nth 1 entry)))
+	  (param (nth 2 entry)))
+      (case method
+	(:set 
+	 (let ((value (cond
+		       ((null param) nil)
+		       ((symbolp param)
+			(if (fboundp param)
+			    (funcall param)
+			  (if (boundp param)
+			      (symbol-value param)
+			    (symbol-name param))))
+		       (t param))))
+	   (geben-dbgp-command-feature-set name value)))
+	(:get
+	 (if (and (symbolp param)
+		  (fboundp param))
+	     (geben-dbgp-cmd-sequence
+	      (geben-dbgp-command-feature-get name)
+	      param)
+	   (error "`geben-dbgp-feature-alist' has invalid entry: %S" entry)))))))
 
 ;; -- [breakpoints] --
+
+(defvar geben-dbgp-breakpoint-types '(:line :call :return :exception :conditional)
+  "Store breakpoint types supported by the current debugger engine.")
 
 (defvar geben-dbgp-breakpoints nil
   "A break point list")
@@ -1084,6 +699,36 @@ A source object forms a property list with three properties
   '((t (:inherit font-lock-function-name-face)))
   "Face for displaying line numbers in breakpoint list buffer."
   :group 'geben-highlighting-faces)
+
+(defun geben-dbgp-store-breakpoint-types (cmd msg err)
+  (setq geben-dbgp-breakpoint-types nil)
+  (when (and (not err)
+	     (equal "1" (xml-get-attribute msg 'supported)))
+    (let ((types (car (xml-node-children msg))))
+      (dolist (type (split-string (or types "") " "))
+	(cond
+	 ((string= type "line")
+	  (add-to-list 'geben-dbgp-breakpoint-types :line))
+	 ((string= type "call")
+	  (add-to-list 'geben-dbgp-breakpoint-types :call))
+	 ((string= type "return")
+	  (add-to-list 'geben-dbgp-breakpoint-types :return))
+	 ((string= type "exception")
+	  (add-to-list 'geben-dbgp-breakpoint-types :exception))
+	 ((string= type "conditional")
+	  (add-to-list 'geben-dbgp-breakpoint-types :conditional))
+	 ((string= type "watch")
+	  (add-to-list 'geben-dbgp-breakpoint-types :watch)))))
+    (when geben-dbgp-xdebug-p
+      ;; Xdebug 2.0.3 supports the following types but they aren't
+      ;; included in the response. Push them in the list manually.
+      (add-to-list 'geben-dbgp-breakpoint-types :exception)
+      (add-to-list 'geben-dbgp-breakpoint-types :conditional)))
+  (unless geben-dbgp-breakpoint-types
+    ;; Some debugger engines are buggy;
+    ;; they don't return breakpoint types correctly.
+    ;; To them put all of types to the list.
+    (setq geben-dbgp-breakpoint-types '(:line :call :return :exception :conditional :watch))))
 
 (defun geben-dbgp-bp= (lhs rhs)
   "Return t if two breakpoint object point same thing."
@@ -1137,6 +782,17 @@ A source object forms a property list with three properties
       (geben-overlay-put overlay 'insert-in-front-hooks '(geben-dbgp-bp-overlay-inserted-in-front))
       (plist-put bp :overlay overlay)))
   bp)
+
+(defun geben-dbgp-bp-hide-overlays ()
+  "Hide breakpoint overlays."
+  (mapc (lambda (bp)
+	  (case (plist-get bp :type)
+	    (:line
+	     (let ((overlay (plist-get bp :overlay)))
+	       (and (geben-overlayp overlay)
+		    (geben-overlay-livep overlay)
+		    (geben-overlay-put overlay 'face nil))))))
+	geben-dbgp-breakpoints))
 
 (defun geben-dbgp-bp-overlay-modified (overlay afterp beg end &optional len)
   "A callback function invoked when inside of an overlay is modified.
@@ -1256,17 +912,6 @@ the file."
 						    (geben-what-line))))))))
 	    (geben-dbgp-command-breakpoint-set bp))
 	  geben-dbgp-breakpoints)))
-
-(defun geben-dbgp-bp-hide-breakpoints ()
-  "Hide breakpoint overlays."
-  (mapc (lambda (bp)
-	  (case (plist-get bp :type)
-	    (:line
-	     (let ((overlay (plist-get bp :overlay)))
-	       (and (geben-overlayp overlay)
-		    (geben-overlay-livep overlay)
-		    (geben-overlay-put overlay 'face nil))))))
-	geben-dbgp-breakpoints))
 
 ;; --[breakpoint list]--
 
@@ -1438,8 +1083,6 @@ Key mapping and other information is described its help page."
     (when displayp
       (geben-dbgp-display-window buf))))
 
-(defvar geben-dbgp-current-status nil)
-
 (defun geben-dbgp-breakpoint-list-refresh ()
   (when (and (eq 'break geben-dbgp-current-status)
 	     (get-buffer geben-breakpoint-list-buffer-name))
@@ -1546,7 +1189,6 @@ The buffer commands are:
 					(plist-get bp :lineno)
 					t))))
 
-
 (defun geben-breakpoint-list-mode-quit ()
   "Quit and bury the breakpoint list mode buffer."
   (interactive)
@@ -1558,56 +1200,7 @@ The buffer commands are:
   (interactive)
   (geben-dbgp-breakpoint-list-refresh))
 
-;;--
-
-(defun geben-session-reset-variables ()
-  "Initialize session variables."
-  (geben-dbgp-set-initial-message nil)
-  (setq geben-dbgp-stack nil
-	geben-dbgp-current-stack nil)
-  (clrhash geben-dbgp-cmd-hash)
-  (clrhash geben-dbgp-source-hash))
-  
-(defun geben-dbgp-reset ()
-  "Reset GEBEN session."
-  (setq gud-last-frame nil)
-  (cond
-   ((boundp 'gud-overlay-arrow-position)
-    (setq gud-overlay-arrow-position nil))
-   ((boundp 'overlay-arrow-position)
-    (setq overlay-arrow-position nil)))
-  (maphash (lambda (fileuri source)
-	     (geben-dbgp-cleanup-file source))
-	   geben-dbgp-source-hash)
-  (when geben-show-breakpoints-debugging-only
-    (geben-dbgp-bp-hide-breakpoints))
-  (geben-session-reset-variables)
-  (ignore-errors
-    (geben-delete-directory-tree (geben-temp-dir))))
-
 ;;; dbgp protocol handler
-
-(defcustom geben-session-starting-hook nil
-  "*Hook running at when the geben debugging session is starting."
-  :group 'geben
-  :type 'hook)
-
-(defcustom geben-session-finished-hook nil
-  "*Hook running at when the geben debugging session is finished."
-  :group 'geben
-  :type 'hook)
-
-(defun geben-dbgp-update-session-status (msg)
-  "Remain current status of the current session."
-  (case (xml-node-name msg)
-    ('connect
-     (setq geben-dbgp-current-status 'connect))
-    ('init
-     (setq geben-dbgp-current-status 'init))
-    ('response
-     (let ((status (xml-get-attribute msg 'status)))
-       (when (string< "" status)
-	 (setq geben-dbgp-current-status (intern status)))))))
 
 (defun geben-dbgp-entry (msg)
   "Analyze MSG and dispatch to a specific handler."
@@ -1625,6 +1218,30 @@ The buffer commands are:
      ;;mada
      (message "unknown protocol: %S" msg))))
 
+(defun geben-dbgp-reset ()
+  "Reset GEBEN session."
+  (setq gud-last-frame nil)
+  (cond
+   ((boundp 'gud-overlay-arrow-position)
+    (setq gud-overlay-arrow-position nil))
+   ((boundp 'overlay-arrow-position)
+    (setq overlay-arrow-position nil)))
+  (maphash (lambda (fileuri source)
+	     (geben-dbgp-cleanup-file source))
+	   geben-dbgp-source-hash)
+  (when geben-show-breakpoints-debugging-only
+    (geben-dbgp-bp-hide-overlays))
+  (geben-dbgp-reset-session-variables)
+  (ignore-errors
+    (geben-delete-directory-tree (geben-temp-dir))))
+
+(defun geben-dbgp-reset-session-variables ()
+  "Initialize session variables."
+  (geben-dbgp-set-initial-message nil)
+  (setq geben-dbgp-current-stack nil)
+  (clrhash geben-dbgp-cmd-hash)
+  (clrhash geben-dbgp-source-hash))
+  
 (defun geben-dbgp-handle-init (msg)
   "Handle a init message."
   (run-hooks 'geben-session-starting-hook)
@@ -1713,70 +1330,6 @@ required for each dbgp command by the protocol specification."
       (gud-basic-call (geben-dbgp-cmd-expand tid cmd))
       tid)))
 
-;;; redirection
-
-(defvar geben-dbgp-redirect-bufferp nil)
-
-(defun geben-dbgp-init-redirects ()
-  "Initialize redirection related variables."
-  (when geben-dbgp-redirect-stdout-current
-    (geben-dbgp-command-stdout geben-dbgp-redirect-stdout-current))
-  (when geben-dbgp-redirect-stderr-current
-    (geben-dbgp-command-stderr geben-dbgp-redirect-stderr-current)))
-
-(defun geben-dbgp-redirect-stream (type encoding content)
-  "Print redirected string to specific buffers."
-  (let ((bufname (geben-dbgp-redirect-buffer-name type)))
-    (when bufname
-      (let* ((buf (or (get-buffer bufname)
-		      (progn
-			(with-current-buffer (get-buffer-create bufname)
-			  (set (make-local-variable 'geben-dbgp-redirect-bufferp) t)
-			  (setq buffer-undo-list t)
-			  (run-hook-with-args 'geben-dbgp-redirect-buffer-init-hook)
-			  (current-buffer)))))
-	     (outwin (display-buffer buf))
-	     save-pos)
-	(with-current-buffer buf
-	  (setq save-pos (and (eq (point) (point-max))
-			      (point)))
-	  (save-excursion
-	    (goto-char (point-max))
-	    (insert (decode-coding-string
-		     (if (string= "base64" encoding)
-			 (base64-decode-string content)
-		       content)
-		     geben-dbgp-redirect-coding-system))))
-	(unless save-pos
-	  (save-selected-window
-	    (select-window outwin)
-	    (goto-char (point-max))))))))
-
-(defun geben-dbgp-redirect-buffer-name (type)
-  "Select buffer name for a redirection type."
-  (when (or (and (eq type :stdout) geben-dbgp-redirect-stdout-current)
-	    (and (eq type :stderr) geben-dbgp-redirect-stderr-current))
-    (cond
-     (geben-dbgp-redirect-combine-current
-      geben-redirect-combine-buffer-name)
-     ((eq :stdout type)
-      geben-redirect-stdout-buffer-name)
-     (t
-      geben-redirect-stderr-buffer-name))))
-
-(defun geben-dbgp-redirect-buffer-existp ()
-  "Check whether any redirection buffer exists."
-  (let (name)
-    (or (and (setq name (geben-dbgp-redirect-buffer-name :stdout))
-	     (get-buffer name))
-	(and (setq name (geben-dbgp-redirect-buffer-name :stderr))
-	     (get-buffer name)))))
-
-(defun geben-dbgp-redirect-buffer-visiblep ()
-  "Check whether any window displays any redirection buffer."
-  (let ((buf (geben-dbgp-redirect-buffer-existp)))
-    (and buf (get-buffer-window buf))))
-  
 ;;;
 ;;; command/response handlers
 ;;;
@@ -2368,10 +1921,7 @@ If the optional argument COMMAND-LINE is nil, the value of
       buf)))
 
 (defun geben-enter-geben-mode (buf)
-  (with-current-buffer buf
-    (or (not (fboundp 'geben-mode))
-	geben-mode
-	(geben-mode 1))))
+  (geben-mode 1))
 
 ;; -- [utility]--
 
@@ -2393,6 +1943,445 @@ If POS is omitted, then the current position is used."
       (beginning-of-line)
       (1+ (count-lines 1 (point))))))
 
+;;
+;; -- [interactive commands] --
+;;
+
+;;; #autoload
+(defun geben (&optional quit)
+  "Start GEBEN, a PHP source level debugger.
+Prefixed with \\[universal-argument], GEBEN quits immediately.
+
+GEBEN communicates with script servers, located anywhere local or
+remote, in DBGp protocol (e.g. PHP with Xdebug extension)
+to help you debugging your script with some valuable features:
+ - continuation commands like \`step in\', \`step out\', ...
+ - a kind of breakpoints like \`line no\', \`function call\' and
+   \`function return\'.
+ - evaluation
+ - stack dump
+ - etc.
+
+The script servers should be DBGp protocol enabled.
+Ask to your script server administrator about this setting up
+issue.
+
+The variable `geben-dbgp-command-line' is a command line to
+execute a DBGp protocol client command. GEBEN communicates with
+script servers through this command.
+
+Once you've done these setup operation correctly, run GEBEN first
+and your script on your script server second. After some
+negotiation GEBEN will display your script's entry source code.
+The debugging session is started.
+
+In the debugging session the source code buffers are under the
+minor mode  `geben-mode'. Key mapping and other information is
+described its help page."
+  (interactive "P")
+  (if quit
+      (and gud-comint-buffer
+	   (buffer-name gud-comint-buffer)
+	   (kill-buffer gud-comint-buffer))
+    (geben-dbgp)))
+
+;;-------------------------------------------------------------
+;;  geben-mode
+;;-------------------------------------------------------------
+
+(defvar geben-mode-map nil)
+(unless geben-mode-map
+  (setq geben-mode-map (make-sparse-keymap "geben"))
+  ;; control
+  (define-key geben-mode-map " " 'geben-step-again)
+  (define-key geben-mode-map "g" 'geben-run)
+  ;;(define-key geben-mode-map "G" 'geben-Go-nonstop-mode)
+  (define-key geben-mode-map "t" 'geben-set-redirect)
+  ;;(define-key geben-mode-map "T" 'geben-Trace-fast-mode)
+  ;;(define-key geben-mode-map "c" 'geben-continue-mode)
+  ;;(define-key geben-mode-map "C" 'geben-Continue-fast-mode)
+
+  ;;(define-key geben-mode-map "f" 'geben-forward) not implemented
+  ;;(define-key geben-mode-map "f" 'geben-forward-sexp)
+  ;;(define-key geben-mode-map "h" 'geben-goto-here)
+
+  ;;(define-key geben-mode-map "I" 'geben-instrument-callee)
+  (define-key geben-mode-map "i" 'geben-step-into)
+  (define-key geben-mode-map "o" 'geben-step-over)
+  (define-key geben-mode-map "r" 'geben-step-out)
+
+  ;; quitting and stopping
+  (define-key geben-mode-map "q" 'geben-stop)
+  ;;(define-key geben-mode-map "Q" 'geben-top-level-nonstop)
+  ;;(define-key geben-mode-map "a" 'abort-recursive-edit)
+  (define-key geben-mode-map "S" 'geben-stop)
+
+  ;; breakpoints
+  (define-key geben-mode-map "b" 'geben-set-breakpoint-line)
+  (define-key geben-mode-map "B" 'geben-breakpoint-menu)
+  (define-key geben-mode-map "u" 'geben-unset-breakpoint-line)
+  (define-key geben-mode-map "\C-cb" 'geben-breakpoint-list)
+  ;;(define-key geben-mode-map "B" 'geben-next-breakpoint)
+  ;;(define-key geben-mode-map "x" 'geben-set-conditional-breakpoint)
+  ;;(define-key geben-mode-map "X" 'geben-set-global-break-condition)
+
+  ;; evaluation
+  (define-key geben-mode-map "e" 'geben-eval-expression)
+  ;;(define-key geben-mode-map "\C-x\C-e" 'geben-eval-last-sexp)
+  ;;(define-key geben-mode-map "E" 'geben-visit-eval-list)
+
+  ;; views
+  (define-key geben-mode-map "w" 'geben-where)
+  ;;(define-key geben-mode-map "v" 'geben-view-outside) ;; maybe obsolete??
+  ;;(define-key geben-mode-map "p" 'geben-bounce-point)
+  ;;(define-key geben-mode-map "P" 'geben-view-outside) ;; same as v
+  ;;(define-key geben-mode-map "W" 'geben-toggle-save-windows)
+
+  ;; misc
+  ;;(define-key geben-mode-map "?" 'geben-help)
+  (define-key geben-mode-map "d" 'geben-backtrace)
+
+  ;;(define-key geben-mode-map "-" 'negative-argument)
+
+  ;; statistics
+  ;;(define-key geben-mode-map "=" 'geben-temp-display-freq-count)
+
+  ;; GUD bindings
+  (define-key geben-mode-map "\C-c\C-s" 'geben-step-into)
+  (define-key geben-mode-map "\C-c\C-n" 'geben-step-over)
+  (define-key geben-mode-map "\C-c\C-c" 'geben-run)
+
+  (define-key geben-mode-map "\C-x " 'geben-set-breakpoint-line)
+  (define-key geben-mode-map "\C-c\C-d" 'geben-unset-breakpoint-line)
+  (define-key geben-mode-map "\C-c\C-t" 'geben-set-breakpoint-line)
+  (define-key geben-mode-map "\C-c\C-l" 'geben-where))
+
+(define-minor-mode geben-mode
+  "Minor mode for debugging source code with GEBEN.
+The geben-mode buffer commands:
+\\{geben-mode-map}"
+  nil " *debugging*" geben-mode-map
+  (setq buffer-read-only geben-mode))
+  
+(add-hook 'kill-emacs-hook
+	  (lambda ()
+	    (geben-dbgp-reset)))
+
+(defvar geben-step-type :step-into
+  "Step command of what `geben-step-again' acts.
+This value remains the last step command type either
+`:step-into' or `:step-out'.")
+
+(defun geben-step-again ()
+  "Do either `geben-step-into' or `geben-step-over' what the last time called.
+Default is `geben-step-into'."
+  (interactive)
+  (case geben-step-type
+    (:step-over (geben-step-over))
+    (:step-into (geben-step-into))
+    (t (geben-step-into))))
+     
+(defun geben-step-into ()
+  "Step into the definition of the function or method about to be called.
+If there is a function call involved it will break on the first
+statement in that function"
+  (interactive)
+  (setq geben-step-type :step-into)
+  (geben-dbgp-command-step-into))
+
+(defun geben-step-over ()
+  "Step over the definition of the function or method about to be called.
+If there is a function call on the line from which the command
+is issued then the debugger engine will stop at the statement
+after the function call in the same scope as from where the
+command was issued"
+  (interactive)
+  (setq geben-step-type :step-over)
+  (geben-dbgp-command-step-over))
+
+(defun geben-step-out ()
+  "Step out of the current scope.
+It breaks on the statement after returning from the current
+function."
+  (interactive)
+  (geben-dbgp-command-step-out))
+
+(defun geben-run ()
+  "Start or resumes the script.
+It will break at next breakpoint, or stops at the end of the script."
+  (interactive)
+  (geben-dbgp-command-run))
+
+(defun geben-stop ()
+  "End execution of the script immediately."
+  (interactive)
+  (geben-dbgp-command-stop))
+
+(defun geben-breakpoint-menu (arg)
+  "Set a breakpoint interactively.
+Script debugger engine may support a kind of breakpoints, which
+will be stored in the variable `geben-dbgp-breakpoint-types'
+after a debugging session is started.
+
+This command asks you a breakpoint type and its options.
+Optionally, with a numeric argument you can specify `hit-value'
+\(number of hits to break); \\[universal-argument] 2 \
+\\<geben-mode-map>\\[geben-breakpoint-menu] will set a breakpoint
+with 2 hit-value.
+With just a prefix arg \(\\[universal-argument] \\[geben-breakpoint-menu]), \
+this command will also ask a
+hit-value interactively.
+"
+  (interactive "P")
+  (let ((candidates (remove nil
+			    (mapcar
+			     (lambda (x)
+			       (if (member (car x) geben-dbgp-breakpoint-types) x))
+			     '((:line . "l)Line")
+			       (:call . "c)Call")
+			       (:return . "r)Return")
+			       (:exception . "e)Exception")
+			       (:conditional . "d)Conditional")
+			       (:watch . "w)Watch"))))))
+    (when (null candidates)
+      (error "No breakpoint type is supported by the debugger engine."))
+    (let* ((c (read-char (concat "Breakpoint type: "
+				 (mapconcat
+				  (lambda (x)
+				    (cdr x))
+				  candidates " "))))
+	   (x (find-if (lambda (x)
+			 (eq c (elt (cdr x) 0)))
+		       candidates))
+	   (fn (and x
+		    (intern-soft (concat "geben-set-breakpoint-"
+					 (substring (symbol-name (car x)) 1))))))
+      (unless x
+	(error "Cancelled"))
+      (if (fboundp fn)
+	  (call-interactively fn)
+	(error (concat (symbol-name fn) " is not implemented."))))))
+
+(defun geben-set-breakpoint-common (hit-value cmd)
+  (setq hit-value (if (and (not (null hit-value))
+			   (listp hit-value))
+		      (if (fboundp 'read-number)
+			  (read-number "Number of hit to break: ")
+			(string-to-number
+			 (read-string "Number of hit to break: ")))
+		    hit-value))
+    (plist-put cmd :hit-value (if (and (numberp hit-value)
+				       (<= 0 hit-value))
+				  hit-value
+				0))
+    (geben-dbgp-command-breakpoint-set cmd))
+
+(defun geben-set-breakpoint-line (fileuri lineno &optional hit-value)
+  "Set a breakpoint at the current line.
+Optionally, with a numeric argument you can specify `hit-value'
+\(number of hits to break); \\[universal-argument] 2 \
+\\<geben-mode-map>\\[geben-set-breakpoint-line] will set a breakpoint
+with 2 hit-value.
+With just a prefix arg \(\\[universal-argument] \\[geben-set-breakpoint-line]), \
+this command will also ask a
+hit-value interactively."
+  (interactive (list nil nil current-prefix-arg))
+  (let ((local-path (if fileuri
+			(geben-dbgp-get-local-path-of fileuri)
+		      (buffer-file-name (current-buffer)))))
+    (geben-set-breakpoint-common hit-value
+				 (geben-dbgp-bp-make
+				  :line
+				  :fileuri (or fileuri
+					       (geben-dbgp-find-fileuri local-path)
+					       (geben-dbgp-find-fileuri (file-truename local-path))
+					       (concat "file://" (file-truename local-path)))
+				  :lineno (or (numberp lineno)
+					      (geben-what-line))
+				  :local-path local-path
+				  :overlay t))))
+
+(defvar geben-set-breakpoint-call-history nil)
+(defvar geben-set-breakpoint-fileuri-history nil)
+(defvar geben-set-breakpoint-exception-history nil)
+(defvar geben-set-breakpoint-condition-history nil)
+
+(defun geben-set-breakpoint-call (name &optional fileuri hit-value)
+  "Set a breakpoint to break at when entering function/method named NAME.
+For a class method, specify NAME like \"MyClass::MyMethod\".
+For an instance method, do either like \"MyClass::MyMethod\" or
+\"MyClass->MyMethod\".
+Optionally, with a numeric argument you can specify `hit-value'
+\(number of hits to break); \\[universal-argument] 2 \
+\\<geben-mode-map>\\[geben-set-breakpoint-call] will set a breakpoint
+with 2 hit-value.
+With just a prefix arg \(\\[universal-argument] \\[geben-set-breakpoint-call]),
+this command will also ask a
+hit-value interactively."
+  (interactive (list
+		(read-string "Name: " ""
+			     'geben-set-breakpoint-call-history)
+		(unless (member geben-dbgp-target-language '(:php :ruby))
+		  ;; at this present some debugger engines' implementation is buggy:
+		  ;; some requires fileuri and some don't accept it.
+		  (read-string "fileuri: " 
+			       (concat "file://" (file-truename (buffer-file-name (current-buffer))))
+			       'geben-set-breakpoint-fileuri-history))
+		current-prefix-arg))
+  (when (string< "" name)
+    (geben-set-breakpoint-common hit-value
+				 (geben-dbgp-bp-make :call
+						     :function name
+						     :fileuri fileuri))))
+
+(defun geben-set-breakpoint-return (name &optional fileuri hit-value)
+  "Set a breakpoint to break after returned from a function/method named NAME.
+For a class method, specify NAME like \"MyClass::MyMethod\".
+For an instance method, do either like \"MyClass::MyMethod\" or
+\"MyClass->MyMethod\".
+Optionally, with a numeric argument you can specify `hit-value'
+\(number of hits to break); \\[universal-argument] 2 \
+\\<geben-mode-map>\\[geben-set-breakpoint-return] will set a breakpoint
+with 2 hit-value.
+With just a prefix arg \(\\[universal-argument] \\[geben-set-breakpoint-return]),
+this command will also ask a
+hit-value interactively."
+  (interactive (list
+		(read-string "Name: " ""
+			     'geben-set-breakpoint-call-history)
+		(unless (member geben-dbgp-target-language '(:php :ruby))
+		  ;; at this present some debugger engines' implementations are buggy:
+		  ;; some requires fileuri and some don't accept it.
+		  (read-string "fileuri: " 
+			       (concat "file://" (file-truename (buffer-file-name (current-buffer))))
+			       'geben-set-breakpoint-fileuri-history))
+		current-prefix-arg))
+  (when (string< "" name)
+    (geben-set-breakpoint-common hit-value
+				 (geben-dbgp-bp-make :return
+						     :function name
+						     :fileuri fileuri))))
+
+(defun geben-set-breakpoint-exception (name &optional hit-value)
+  "Set a breakpoint to break at when an exception named NAME is occurred.
+Optionally, with a numeric argument you can specify `hit-value'
+\(number of hits to break); \\[universal-argument] 2 \
+\\<geben-mode-map>\\[geben-set-breakpoint-exception] will set a breakpoint
+with 2 hit-value.
+With just a prefix arg \(\\[universal-argument] \\[geben-set-breakpoint-exception]),
+this command will also ask a
+hit-value interactively."
+  (interactive (list
+		(read-string "Exception type: "
+			     "Exception"
+			     'geben-set-breakpoint-exception-history)
+		current-prefix-arg))
+  (geben-set-breakpoint-common hit-value
+			       (geben-dbgp-bp-make :exception
+						   :exception name)))
+   
+(defun geben-set-breakpoint-conditional (expr fileuri &optional lineno hit-value)
+  "Set a breakpoint to break at when the expression EXPR is true in the file FILEURI.
+Optionally, with a numeric argument you can specify `hit-value'
+\(number of hits to break); \\[universal-argument] 2 \
+\\<geben-mode-map>\\[geben-set-breakpoint-conditional] will set a breakpoint
+with 2 hit-value.
+With just a prefix arg \(\\[universal-argument] \\[geben-set-breakpoint-conditional]),
+this command will also ask a
+hit-value interactively."
+  (interactive (list
+		(read-string "Expression: " ""
+			     'geben-set-breakpoint-condition-history)
+		(concat "file://" (file-truename (buffer-file-name (current-buffer))))
+		(read-string "Line number to evaluate (blank means entire file): "
+			     (number-to-string (geben-what-line)))
+		current-prefix-arg))
+  
+  (geben-set-breakpoint-common hit-value
+			       (geben-dbgp-bp-make :conditional
+						   :expression expr
+						   :fileuri fileuri
+						   :lineno (and (stringp lineno)
+								(string-match "^[0-9]+$" lineno)
+								(string-to-number lineno)))))
+
+(defun geben-set-breakpoint-watch (expr &optional hit-value)
+  "Set a breakpoint to break on write of the variable or address.
+Optionally, with a numeric argument you can specify `hit-value'
+\(number of hits to break); \\[universal-argument] 2 \
+\\<geben-mode-map>\\[geben-set-breakpoint-conditional] will set a breakpoint
+with 2 hit-value.
+With just a prefix arg \(\\[universal-argument] \\[geben-set-breakpoint-conditional]),
+this command will also ask a
+hit-value interactively."
+  (interactive (list
+		(read-string "Expression: " ""
+			     'geben-set-breakpoint-condition-history)
+		current-prefix-arg))
+  (geben-set-breakpoint-common hit-value
+			       (geben-dbgp-bp-make :watch
+						   :expression expr)))
+
+(defun geben-unset-breakpoint-line ()
+  "Clear a breakpoint set at the current line."
+  (interactive)
+  (geben-dbgp-command-breakpoint-remove))
+
+(defun geben-breakpoint-list ()
+  "Display breakpoint list.
+The breakpoint list buffer is under `geben-breakpoint-list-mode'.
+Key mapping and other information is described its help page."
+  (interactive)
+  (geben-dbgp-breakpoint-list t))
+
+(defvar geben-eval-history nil)
+
+(defun geben-eval-expression (expr)
+  "Evaluate a given string EXPR within the current execution context."
+  (interactive
+   (progn
+     (list (read-from-minibuffer "Eval: "
+				 nil nil nil 'geben-eval-history))))
+  (geben-dbgp-command-eval expr))
+
+(defun geben-open-file (fileuri)
+  "Open a debugger server side file specified by FILEURI.
+FILEURI forms like as \`file:///path/to/file\'."
+  (interactive (list (read-string "Open file: " "file://")))
+  (geben-dbgp-command-source fileuri))
+
+(defun geben-backtrace ()
+  "Display backtrace list.
+The backtrace list buffer is under `geben-backtrace-mode'.
+Key mapping and other information is described its help page."
+  (interactive)
+  (geben-dbgp-backtrace))
+
+(defun geben-set-redirect (target &optional arg)
+  "Set the debuggee script's output redirection mode.
+This command enables you to redirect the debuggee script's output to GEBEN.
+You can select redirection target from \`stdout', \`stderr' and both of them.
+Prefixed with \\[universal-argument], you can also select redirection mode
+from \`redirect', \`intercept' and \`disabled'."
+  (interactive (list (case (read-char "Redirect: o)STDOUT e)STRERR b)Both")
+		       (?o :stdout)
+		       (?e :stderr)
+		       (?b :both))
+		     current-prefix-arg))
+  (unless target
+    (error "Cancelled"))
+  (let ((mode (if arg
+		  (case (read-char "Mode: r)Redirect i)Intercept d)Disable")
+		    (?r :redirect)
+		    (?i :intercept)
+		    (?d :disable))
+		:redirect)))
+    (unless mode
+      (error "Cancelled"))
+    (when (memq target '(:stdout :both))
+      (geben-dbgp-command-stdout mode))
+    (when (memq target '(:stderr :both))
+      (geben-dbgp-command-stderr mode))))
 
 (provide 'geben)
 
