@@ -1,3 +1,13 @@
+2008-10-25  reedom  <fujinaka.tohru@gmail.com>
+
+    * [CHG] Rearranged function/variable appearance order
+    * [FIX] hit-value of breakpoints were ignored.
+    * [FIX] In the breakpoint list buffer it was not able for
+            breakpoints except line type to went to setting
+            line.
+    * [FIX] Breakpoint marker handling was not enough for
+            breakpoints except line type.
+        
 2008-10-24  reedom  <fujinaka.tohru@gmail.com>
 
 	* [FIX] Improved session finishing handling.
