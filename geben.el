@@ -3,7 +3,7 @@
 ;; Filename: geben.el
 ;; Author: reedom <fujinaka.tohru@gmail.com>
 ;; Maintainer: reedom <fujinaka.tohru@gmail.com>
-;; Version: 0.16
+;; Version: 0.17
 ;; URL: http://code.google.com/p/geben-on-emacs/
 ;; Keywords: DBGp, debugger, php, Xdebug, python, Komodo
 ;; Compatibility: Emacs 21.4
@@ -1860,7 +1860,7 @@ If the optional argument COMMAND-LINE is nil, the value of
 
 (defun geben-temp-path-for-fileuri (fileuri)
   "Generate path string from FILEURI to store files temporarily."
-  (when (string-match "^file:\\(//\\)?" fileuri)
+  (when (string-match "^file:\\(//\\)?/" fileuri)
     (expand-file-name (substring fileuri (match-end 0)) (geben-temp-dir))))
 
 (defun geben-temp-store (path source)

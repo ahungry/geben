@@ -1,26 +1,30 @@
+2008-10-27  reedom  <fujinaka.tohru@gmail.com>
+        
+        * [FIX] Location path for remotely fetched source files.
+        
 2008-10-25  reedom  <fujinaka.tohru@gmail.com>
-
-    * [CHG] Rearranged function/variable appearance order
-    * [FIX] hit-value of breakpoints were ignored.
-    * [FIX] In the breakpoint list buffer it was not able for
-            breakpoints except line type to went to setting
-            line.
-    * [FIX] Breakpoint marker handling was not enough for
-            breakpoints except line type.
+        
+        * [CHG] Rearranged function/variable appearance order
+        * [FIX] hit-value of breakpoints were ignored.
+        * [FIX] In the breakpoint list buffer it was not able for
+                breakpoints except line type to went to setting
+                line.
+        * [FIX] Breakpoint marker handling was not enough for
+                breakpoints except line type.
         
 2008-10-24  reedom  <fujinaka.tohru@gmail.com>
 
-	* [FIX] Improved session finishing handling.
-	* [FIX] When reopen a debuggee script file which has
-	        any line breakpoints, GEBEN had failed to restore
-	        overlays.
-	* [CHG] Wrote some breakpoints related code to overcome
-	        the difference between DBGp server implementation.
-	
+        * [FIX] Improved session finishing handling.
+        * [FIX] When reopen a debuggee script file which has
+                any line breakpoints, GEBEN had failed to restore
+                overlays.
+        * [CHG] Wrote some breakpoints related code to overcome
+                the difference between DBGp server implementation.
+        
 2008-10-23  reedom  <fujinaka.tohru@gmail.com>
 
-	* [ADD] Support for Komodo Debugger Extentions are added.
-	
+        * [ADD] Support for Komodo Debugger Extentions are added.
+        
 2008-10-22  reedom  <reedom_@users.sourceforge.net>
 
         * [ADD] Supports a kind of breakpoint features found in
