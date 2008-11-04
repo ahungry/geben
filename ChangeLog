@@ -1,9 +1,30 @@
+2008-11-04  reedom  <fujinaka.tohru@gmail.com>
+
+        * [ADD] Added Makefile.
+        * [ADD] New commands `geben-mode-help' and similar to display
+                description and key bindings of GEBEN's each mode.
+        * [CHG] Face definition: `geben-backtrace-fileuri'
+        * [CHG] Face definition: `geben-breakpoint-face'
+        
+2008-11-01  reedom  <fujinaka.tohru@gmail.com>
+
+        * [CHG] Dropped Emacs 21.4 due to use tree-widget.el for the
+                context buffer.
+        * [ADD] New command `geben-display-context and related commands.
+        
+2008-10-29  reedom  <fujinaka.tohru@gmail.com>
+
+        * [CHG] Renamed `ogeben-debug-target-remotep'
+                to `geben-always-use-mirror-file-p'.
+        * [CHG] Renamed `geben-close-remote-file-after-finish'
+                to `geben-close-mirror-file-after-finish'.
+
 2008-10-27  reedom  <fujinaka.tohru@gmail.com>
-        
+
         * [FIX] Location path for remotely fetched source files.
-        
+
 2008-10-25  reedom  <fujinaka.tohru@gmail.com>
-        
+
         * [CHG] Rearranged function/variable appearance order
         * [FIX] hit-value of breakpoints were ignored.
         * [FIX] In the breakpoint list buffer it was not able for
@@ -11,7 +32,7 @@
                 line.
         * [FIX] Breakpoint marker handling was not enough for
                 breakpoints except line type.
-        
+
 2008-10-24  reedom  <fujinaka.tohru@gmail.com>
 
         * [FIX] Improved session finishing handling.
@@ -20,11 +41,11 @@
                 overlays.
         * [CHG] Wrote some breakpoints related code to overcome
                 the difference between DBGp server implementation.
-        
+
 2008-10-23  reedom  <fujinaka.tohru@gmail.com>
 
         * [ADD] Support for Komodo Debugger Extentions are added.
-        
+
 2008-10-22  reedom  <reedom_@users.sourceforge.net>
 
         * [ADD] Supports a kind of breakpoint features found in
@@ -41,15 +62,15 @@
         * [ADD] Custom variable `geben-dbgp-feature-list'.
         * [DEL] Custom variable `geben-dbgp-feature-alist' is
                 now obsolete.
-        
+
 2008-10-15  reedom  <reedom_@users.sourceforge.net>
-        
+
         * [FIX] Runtime errors on Emacs 21.4.
-        
+
 2008-10-13  reedom  <reedom_@users.sourceforge.net>
-        
+
         * [CHG] Improved redirection buffer scrolling behavior.
-                
+
 
 2008-10-13  reedom  <reedom_@users.sourceforge.net>
 
@@ -62,7 +83,7 @@
                 causes runtime error on Emacs 22.1.1.
 
 2008-10-11  reedom  <reedom_@users.sourceforge.net>
-    
+
         * [ADD] STDOUT and STDERR redirection features.
         * [ADD] New command `geben-set-redirect'.
                 Assigned to `t' key in geben-mode.
@@ -71,7 +92,7 @@
         * [ADD] Custom variable `geben-dbgp-redirect-combine'.
         * [ADD] Custom variable `geben-dbgp-redirect-coding-system'.
         * [ADD] Custom variable `geben-dbgp-redirect-buffer-init-hook'.
-    
+
 2008-10-10  reedom  <reedom_@users.sourceforge.net>
 
         * [ADD] Backtrace display feature.
@@ -80,7 +101,7 @@
         * [ADD] Custom variable `geben-display-window-function'.
         * [FIX] `defface' caused an error on Emacs 21.4 because of using
                 the newly added attribute `min-color'.
-    
+
 2008-10-09  reedom  <reedom_@users.sourceforge.net>
 
         * [ADD] Variable `geben-dbgp-current-stack'.
@@ -115,9 +136,9 @@
         * [ADD] Custom variable `geben-temporary-file-directory'.
         * [ADD] Custom variable `geben-close-remote-file-after-finish'.
         * [ADD] Custom variable `geben-show-breakpoints-debugging-only'.
-        
+
 2008-10-05  reedom  <reedom_@users.sourceforge.net>
-        
+
         * [FIX] Make GEBEN to call `step_into' at the end of the
                 initial state to place debugger's cursor at the
                 entry point of the debuggee script.
@@ -127,7 +148,7 @@
         * [UPD] Now GEBEN send `feature_set' commands with the variable
                 `geben-dbgp-feature-alist' in the initial state.
         * [ADD] Custom variable `geben-dbgp-command-line'.
-        
+
 2008-10-04  reedom  <reedom_@users.sourceforge.net>
 
         * geben.el: [CHG] Removed dependency on CEDET. With this changing
@@ -135,11 +156,11 @@
         * geben.el: [CHG] Moved all of GEBEN implementation to geben.el.
 
 2007-07-04  thoney_f(reedom)  <reedom_@users.sourceforge.net>
-        
+
         * geben-dbgp.el: [FIX] geben-response-eval didn't decode `PHP object'.
         * geben-dbgp.el: [FIX] An overlay-arrow-position leaved after finishing
                                a debug session.
-        
+
 2006-12-26  thoney_f(reedom)  <reedom_@users.sourceforge.net>
 
         * Released version 0.01, a sample implementation.

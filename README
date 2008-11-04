@@ -1,5 +1,5 @@
-GEBEN-0.17
-----------
+GEBEN-0.18 (Beta)
+-----------------
 
 GEBEN is a software package that interfaces Emacs to DBGp protocol
 with which you can debug running scripts interactive. At this present
@@ -7,8 +7,7 @@ DBGp protocol are supported in several script languages with help of
 custom extensions.
 
  * PHP with Xdebug
- * Perl, Python, Tcl, JavaScript and Ruby with Komodo Debugger
-   Extensions
+ * Perl, Python, Ruby and Tcl with Komodo Debugger Extensions
 
 Currently GEBEN implements the following features.
 
@@ -16,10 +15,8 @@ Currently GEBEN implements the following features.
  * set/unset/listing breakpoints
  * expression evaluation
  * STDOUT/STDERR redirection
- * backtrace listing 
-
-GEBEN is alpha stage in this release. Only a few features are covered.
-(Still it might be useful with help of Emacs' other features ;-)
+ * backtrace listing
+ * variable inspection
 
 
 REQUIREMENTS
@@ -32,12 +29,14 @@ REQUIREMENTS
    debugging enabled with DBGp protocol
 
 [client side]
- - Emacs21.4 or later
+ - Emacs22.1 or later
  - xdebugclient
 
 
 BIG CHANGES
 -----------
+
+- At version 0.18 GEBEN dropped Emacs 21.4.
 
 - Since version 0.1 GEBEN does not depend on CEDET emacs library.
   If you have installed CEDET previously only for GEBEN-pre-alpha,
@@ -59,7 +58,7 @@ INSTALLATION
   PHP:    http://php.net
   Xdebug: http://xdebug.org
 
-- To debug Perl, Python, Ruby, Tcl and JavaScript with GEBEN, Komodo
+- To debug Perl, Python, Ruby and Tcl with GEBEN, Komodo
   Debugging Extensions will give you a big help.
   Distribution: http://aspn.activestate.com/ASPN/Downloads/Komodo/RemoteDebugging
   Documentation: http://aspn.activestate.com/ASPN/Reference/Products/Komodo/komodo-doc-debugger.html
@@ -71,11 +70,24 @@ INSTALLATION
    executables. (e.g. /usr/local/bin/)
 1' Or build manually from source code. Sources are included in
    Xdebug source code package.
-2. Unpack GEBEN source code package and copy geben.el into
-   somewhere Emacs' variable `load-path' points.
-   (e.g. /usr/share/Emacs/site-lisp/)
+2. Unpack GEBEN source code package and change directory to the
+   unpacked directory.
+
+<With GNU make command>
+a. run `make'(or `gmake', depends on your environment).
+b. If you are an administrator, Run: sudo make install
+b' Or Run: SITELISP=$HOME/path/to/install make install
+
+<Without GNU make command>
+a. Byte compile `geben.el'.
+b. Copy `geben.elc' and entire `tree-widget' directory to any
+   directory where Emacs can find.(Or add the path to `load-path'
+   list)
+
+<common>
 3. Insert autoload hooks into your .Emacs file.
     -> (autoload 'geben "geben" "PHP Debugger on Emacs" t)
+4. Restart Emacs.
 
 
 DEBUGGING
@@ -100,13 +112,14 @@ Here is an illustration on PHP debugging.
      i       step into
      o       step over
      r       step out
+     g       run
      b       set a breakpoint at a line
      B       set a breakpoint interactively
      u       unset a breakpoint at a line
      \C-b    display breakpoint list
-     g       run
      t       set redirection mode
      \C-u t  change redirection mode
+     v       display context variables
      w       where
      q       stop
 

@@ -1,3 +1,24 @@
+Version 0.18 (2008-11-04)
+
+  From this release GEBEN has shifted from beta stage.
+  
+  Incompatible changes:
+  * GEBEN dropped Emacs 21.4 support.
+    Now GEBEN requires Emacs 22.1 and later.
+
+  Visible changes:
+  * new commands added:
+    - geben-display-context and related commands.
+    - `geben-mode-help' and similar commands to display description
+       and key bindings of GEBEN's each mode.
+  * custom face added:
+    - geben-context-category-face
+    - geben-context-variable-face
+    - geben-context-type-face
+    - geben-context-class-face
+    - geben-context-string-face
+    - geben-context-constant-face
+
 Version 0.17 (2008-10-27)
 
   Visible changes:

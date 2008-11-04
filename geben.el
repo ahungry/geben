@@ -1,37 +1,16 @@
-;;; geben.el --- PHP source code level debugger
+;;; geben.el --- DBGp protocol frontend, a script debugger
+;; $Id$
 ;; 
 ;; Filename: geben.el
 ;; Author: reedom <fujinaka.tohru@gmail.com>
 ;; Maintainer: reedom <fujinaka.tohru@gmail.com>
-;; Version: 0.17
+;; Version: 0.18
 ;; URL: http://code.google.com/p/geben-on-emacs/
-;; Keywords: DBGp, debugger, php, Xdebug, python, Komodo
-;; Compatibility: Emacs 21.4
-;; 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
-;;; Commentary:
+;; Keywords: DBGp, debugger, PHP, Xdebug, Perl, Python, Ruby, Tcl, Komodo
+;; Compatibility: Emacs 22.1
 ;;
-;; This file is part of GEBEN.
-;; GEBEN is a PHP source code level debugger.
-;; This file contains GEBEN's entry command `geben' and some
-;; customizable variables.
-;; 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
-;;; Requirements:
+;; This file is not part of GNU Emacs
 ;;
-;; [Server side]
-;; - PHP with Xdebug 2.0.3
-;;    http://xdebug.org/
-;;
-;; [Client side]
-;; - Emacs 21.4 and later / XEmacs 21.4 and later having gud package
-;; - DBGp client(Debug client)
-;;    http://xdebug.org/
-;; 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
 ;; published by the Free Software Foundation; either version 2, or
@@ -46,15 +25,60 @@
 ;; along with this program; see the file COPYING.  If not, write to
 ;; the Free Software Foundation, Inc., 51 Franklin Street, Fifth
 ;; Floor, Boston, MA 02110-1301, USA.
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 
+;;; Commentary:
+;;
+;; GEBEN is a software package that interfaces Emacs to DBGp protocol
+;; with which you can debug running scripts interactive. At this present
+;; DBGp protocol are supported in several script languages with help of
+;; custom extensions.
+;;
+;;; Usage
+;;
+;; 1. Insert autoload hooks into your .Emacs file.
+;;    -> (autoload 'geben "geben" "PHP Debugger on Emacs" t)
+;; 2. Start GEBEN. By default, M-x geben will start it.
+;;    GEBEN starts to listening to DBGp protocol session connection.
+;; 3. Run debuggee script.
+;;    When the connection is established, GEBEN loads the entry script
+;;    file in geben-mode.
+;; 4. Start debugging. To see geben-mode key bindings, type ?.
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 
+;;; Requirements:
+;;
+;; [Server side]
+;; - PHP with Xdebug 2.0.3
+;;    http://xdebug.org/
+;; - Perl, Python, Ruby, Tcl with Komodo Debugger Extension
+;;    http://aspn.activestate.com/ASPN/Downloads/Komodo/RemoteDebugging
+;;
+;; [Client side]
+;; - Emacs 22.1 and later
+;; - DBGp client(Debug client)
+;;    http://xdebug.org/
 ;; 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 
 ;;; Code:
 
+(eval-when-compile
+  (when (or (not (boundp 'emacs-version))
+	    (string< emacs-version "22.1"))
+    (error (concat "geben.el: This package requires Emacs 22.1 or later."))))
+
 (eval-and-compile
   (require 'cl)
   (require 'gud)
-  (require 'xml))
+  (require 'xml)
+  (require 'tree-widget))
+
+;;--------------------------------------------------------------
+;; constants
+;;--------------------------------------------------------------
 
 (defconst geben-process-buffer-name "*GEBEN process*"
   "Name for DBGp client process console buffer.")
@@ -68,6 +92,12 @@
   "Name for backtrace buffer.")
 (defconst geben-breakpoint-list-buffer-name "*GEBEN breakpoint list*"
   "Name for breakpoint list buffer.")
+(defconst geben-context-buffer-name "*GEBEN context*"
+  "Name for context buffer.")
+
+;;--------------------------------------------------------------
+;; customization
+;;--------------------------------------------------------------
 
 ;; For compatibility between versions of custom
 (eval-and-compile
@@ -89,7 +119,7 @@
       (defmacro defcustom (var value doc &rest args)
 	`(defvar (,var) (,value) (,doc))))))
 
-;; -- [customize group] --
+;; customize group
 
 (defgroup geben nil
   "A PHP Debugging environment."
@@ -100,7 +130,7 @@
   :group 'geben
   :group 'font-lock-highlighting-faces)
 
-;; debuggee scripts
+;; geben session start/finish hooks
 
 (defcustom geben-session-starting-hook nil
   "*Hook running at when the geben debugging session is starting."
@@ -112,11 +142,15 @@
   :group 'geben
   :type 'hook)
 
+;; file hooks
+
 (defcustom geben-after-visit-hook 'geben-enter-geben-mode
   "*Hook running at when GEBEN visits a debuggee script file.
 Each functions is invoked with an argument BUFFER."
   :group 'geben
   :type 'hook)
+
+;; display window behavior
 
 (defcustom geben-display-window-function 'pop-to-buffer
   "*Function to display a debuggee script's content.
@@ -124,22 +158,38 @@ Typically `pop-to-buffer' or `switch-to-buffer'."
   :group 'geben
   :type 'function)
 
-(defmacro geben-dbgp-display-window (buf)
+(defun geben-dbgp-display-window (buf)
   "Display a buffer anywhere in a window, depends on the circumstance."
-  `(if (geben-dbgp-redirect-buffer-visiblep)
-       (progn
-	 (if (and (boundp 'geben-dbgp-redirect-bufferp)
-		  geben-dbgp-redirect-bufferp)
-	     (pop-to-buffer ,buf)
-	   (switch-to-buffer ,buf)))
-     (funcall geben-display-window-function ,buf)))
-  
+  (cond
+   ((get-buffer-window buf)
+    (select-window (get-buffer-window buf))
+    (switch-to-buffer buf))
+   ((or (eq 1 (count-windows))
+	(not (geben-dbgp-dynamic-property-buffer-visiblep)))
+    (funcall geben-display-window-function buf))
+   (t
+    (let (target-window)
+      (condition-case nil
+	  (walk-windows (lambda (window)
+			  (when (and (not (geben-dbgp-dynamic-property-bufferp
+					   (window-buffer window)))
+				     (eq (selected-window) window))
+			    (setq target-window window)
+			    (error nil))))
+	(error nil))
+      (when target-window
+	(select-window target-window))
+      (switch-to-buffer buf))))
+  buf)
+
+;; temporary file (files fetched from remote are stored temporary)
+
 (defcustom geben-temporary-file-directory temporary-file-directory
   "*Base directory path where GEBEN creates a temporary directory."
   :group 'geben
   :type 'directory)
 
-(defcustom geben-close-remote-file-after-finish t
+(defcustom geben-close-mirror-file-after-finish t
   "*Specify whether GEBEN should close fetched files from remote site after debugging.
 Since the remote files is stored temporary that you can confuse
 they were editable if they were left after a debugging session.
@@ -149,36 +199,17 @@ If the value is nil, the files left in buffers."
   :group 'geben
   :type 'boolean)
 
-(defcustom geben-debug-target-remotep nil
-  "*Specifies whether the debug target is in remote server or local."
+(defcustom geben-always-use-mirror-file-p nil
+  "*If nil, GEBEN uses local source file directly in debugging
+session if possible.
+If non-nil, GEBEN never uses local source file but uses mirror
+copied source file."
   :group 'geben
   :type 'boolean)
 
-;; breakpoints
-
-(defcustom geben-show-breakpoints-debugging-only t
-  "*Specify breakpoint markers visibility.
-If the value is nil, GEBEN will always display breakpoint markers.
-If non-nil, displays the markers while debugging but hides after
-debugging is finished."
-  :group 'geben
-  :type 'boolean)
-
-(defface geben-breakpoint-face
-  '((((class color) (background light))
-     :background "red1")
-    (((class color) (background dark))
-     :background "red1")
-    (t :inverse-video t))
-  "Face used to highlight various names.
-This includes element and attribute names, processing
-instruction targets and the CDATA keyword in a CDATA section.
-This is not used directly, but only via inheritance by other faces."
-  :group 'geben-highlighting-faces)
-
-;;-------------------------------------------------------------
+;;--------------------------------------------------------------
 ;;  cross emacs overlay definitions
-;;-------------------------------------------------------------
+;;--------------------------------------------------------------
 
 (eval-and-compile
   (if (featurep 'xemacs)
@@ -238,209 +269,68 @@ This is not used directly, but only via inheritance by other faces."
 			  nil t nil))))
 
 ;;-------------------------------------------------------------
-;;  DBGp handlers
+;;  macros
 ;;-------------------------------------------------------------
 
-;; -- [dbgp features] --
+(defun geben-dbgp-decode-string (string data-encoding coding-system)
+  "Decode encoded STRING."
+  (when string
+    (let ((s string))
+      (when (consp s)
+	(setq s (car s)))
+      (when (stringp s)
+	(setq s (cond
+		 ((equal "base64" data-encoding)
+		  (base64-decode-string s))
+		 (t s)))
+	(if coding-system
+	    (decode-coding-string s coding-system)
+	  s)))))
 
-(defcustom geben-dbgp-feature-list
-  '((:set max_data 65535)
-    (:set max_depth 64)
-    (:get breakpoint_types geben-dbgp-store-breakpoint-types))
-  "*Specifies set of feature variables for each new debugging session.
-Each entry forms a list (METHOD FEATURE_NAME VALUE_OR_CALLBACK).
-METHOD is either `:get' or `:set'.
-FEATURE_NAME is a feature name described in DBGp specification.
-VALUE_OR_CALLBACK is, when the METHOD is `:get' then it should
-be symbol of a callback function will be invoked 3 arguments
-\(CMD MSG ERR), which are results of feature_get DBGp command.
-If the method is `:set' VALUE_OR_CALLBACK can be either a value
-or a symbol of a function. In the latter case the result value
-of the function is passed to feature_set DBGp command."
-  :group 'geben
-  :type '(repeat (list (radio (const :get)
-			      (const :set))
-		       (radio (const :help-echo ":get" :tag "language_supports_threads (:get)" language_supports_threads)
-			      (const :tag "language_name (:get)" language_name)
-			      (const :tag "encoding (:get)" encoding)
-			      (const :tag "protocol_version (:get)" protocol_version)
-			      (const :tag "supports_async (:get)" supports_async)
-			      (const :tag "data_encoding (:get)" data_encoding)
-			      (const :tag "breakpoint_languages (:get)" breakpoint_languages)
-			      (const :tag "breakpoint_types (:get)" breakpoint_types)
-			      (const :tag "multiple_sessions (:get :set)" multiple_sessions)
-			      (const :tag "encoding (:get :set)" encoding)
-			      (const :tag "max_children (:get :set)" max_children)
-			      (const :tag "max_data (:get :set)" max_data)
-			      (const :tag "max_depth (:get :set)" max_depth)
-			      (const :tag "supports_postmortem (:get)" supports_postmortem)
-			      (const :tag "show_hidden (:get :set)" show_hidden)
-			      (const :tag "notify_ok (:get :set)" notify_ok))
-		       sexp)))
+;;==============================================================
+;; DBGp handlers
+;;==============================================================
 
-;; -- [tid] --
-
-(defvar geben-dbgp-tid 30000
-  "Transaction ID.")
-
-(defun geben-dbgp-next-tid ()
-  "Make a new transaction id."
-  (number-to-string (incf geben-dbgp-tid)))
-
-(defmacro geben-dbgp-tid-of (msg)
-  "Get a transaction id of MSG."
-  `(cdr (assoc 'transaction_id (cadr ,msg))))
-  
-;; -- [session] --
-
-(defvar geben-dbgp-init-info nil
-  "Store dbgp initial message.")
-
-(defvar geben-dbgp-xdebug-p nil
-  "Non-nil means the debugger engine is Xdebug.")
-
-(defvar geben-dbgp-target-language nil
-  "Store the current debugger's target language.
-This will be set at run-time.
-Possible values: :php :ruby :python etc.")
-
-(defvar geben-dbgp-current-status nil
-  "Store the current session status")
-
-(defun geben-dbgp-in-session ()
-  (not (null geben-dbgp-init-info)))
-  
-(defun geben-dbgp-update-session-status (msg)
-  "Remain current status of the current session."
-  (case (xml-node-name msg)
-    ('connect
-     (setq geben-dbgp-current-status 'connect))
-    ('init
-     (setq geben-dbgp-current-status 'init))
-    ('response
-     (let ((status (xml-get-attribute msg 'status)))
-       (when (string< "" status)
-	 (setq geben-dbgp-current-status (intern status)))))))
-
-;; -- [stack] --
-
-(defvar geben-dbgp-current-stack nil
-  "Current stack list of the debuggee script.")
-
-(defface geben-backtrace-fileuri
-  '((((class color) (background dark))
-     (:foreground "Green" :weight bold))
-    (((class color)) (:foreground "green" :weight bold))
-    (t (:weight bold)))
-  "Face used to highlight fileuri in backtrace buffer."
-  :group 'geben-highlighting-faces)
-
-(defface geben-backtrace-lineno
-  '((t :inherit font-lock-variable-name-face))
-  "Face for displaying line numbers in backtrace buffer."
-  :group 'geben-highlighting-faces)
-
-(defun geben-dbgp-backtrace ()
-  "Display backtrace."
-  (unless (geben-dbgp-in-session)
-    (error "GEBEN is out of debugging session."))
-  (let ((buf (get-buffer-create geben-backtrace-buffer-name)))
-    (with-current-buffer buf
-      (setq buffer-read-only nil)
-      (buffer-disable-undo)
-      (erase-buffer)
-      (dotimes (i (length geben-dbgp-current-stack))
-	(let* ((stack (second (nth i geben-dbgp-current-stack)))
-	       (fileuri (geben-dbgp-regularize-fileuri (cdr (assq 'filename stack))))
-	       (lineno (cdr (assq 'lineno stack)))
-	       (where (cdr (assq 'where stack))))
-	  (insert (format "%s:%s %s\n"
-			  (propertize fileuri 'face "geben-backtrace-fileuri")
-			  (propertize lineno 'face "geben-backtrace-lineno")
-			  where))
-	  (put-text-property (save-excursion (forward-line -1) (point))
-			     (point)
-			     'geben-stack-frame
-			     (list :fileuri fileuri :lineno lineno))))
-      (setq buffer-read-only t)
-      (geben-backtrace-mode)
-      (goto-char (point-min)))
-    (geben-dbgp-display-window buf)))
-
-(defcustom geben-backtrace-mode-hook nil
-  "*Hook running at when GEBEN's backtrace buffer is initialized."
-  :group 'geben
-  :type 'hook)
-
-(defvar geben-backtrace-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map [mouse-2] 'geben-backtrace-mode-mouse-goto)
-    (define-key map "\C-m" 'geben-backtrace-mode-goto)
-    (define-key map "q" 'geben-backtrace-mode-quit)
-    (define-key map "p" 'previous-line)
-    (define-key map "n" 'next-line)
-    map)
-  "Keymap for `geben-backtrace-mode'")
-    
-(defun geben-backtrace-mode ()
-  "Major mode for GEBEN's backtrace output."
-  (interactive)
-  (kill-all-local-variables)
-  (use-local-map geben-backtrace-mode-map)
-  (setq major-mode 'geben-backtrace-mode)
-  (setq mode-name "GEBEN backtrace")
-  (set (make-local-variable 'revert-buffer-function)
-       (lambda (a b) nil))
-  (and (fboundp 'font-lock-defontify)
-       (add-hook 'change-major-mode-hook 'font-lock-defontify nil t))
-  (if (fboundp 'run-mode-hooks)
-      (run-mode-hooks 'geben-backtrace-mode-hook)
-    (run-hooks 'geben-backtrace-mode-hook)))
-
-(defalias 'geben-backtrace-mode-mouse-goto 'geben-backtrace-mode-goto)
-(defun geben-backtrace-mode-goto (&optional event)
-  (interactive (list last-nonmenu-event))
-  (let ((stack-frame
-         (if (or (null event)
-		 (not (listp event)))
-             ;; Actually `event-end' works correctly with a nil argument as
-             ;; well, so we could dispense with this test, but let's not
-             ;; rely on this undocumented behavior.
-             (get-text-property (point) 'geben-stack-frame)
-           (with-current-buffer (window-buffer (posn-window (event-end event)))
-             (save-excursion
-               (goto-char (posn-point (event-end event)))
-	       (get-text-property (point) 'geben-stack-frame)))))
-        same-window-buffer-names
-        same-window-regexps)
-    (when stack-frame
-      (geben-dbgp-indicate-current-line (plist-get stack-frame :fileuri)
-					(plist-get stack-frame :lineno)
-					t))))
-
-(defun geben-backtrace-mode-quit ()
-  "Quit and bury the backtrace mode buffer."
-  (interactive)
-  (quit-window)
-  (geben-where))
-
-(defun geben-where ()
-  "Move to the current breaking point."
-  (interactive)
-  (if geben-dbgp-current-stack
-      (let* ((stack (second (car geben-dbgp-current-stack)))
-	     (fileuri (geben-dbgp-regularize-fileuri (cdr (assq 'filename stack))))
-	     (lineno (cdr (assq 'lineno stack))))
-	(geben-dbgp-indicate-current-line fileuri lineno t))
-    (when (interactive-p)
-      (message "GEBEN is not started."))))
-      
-;; -- [cmd hash] --
+;;--------------------------------------------------------------
+;; cmd hash
+;;--------------------------------------------------------------
 
 (defvar geben-dbgp-cmd-hash (make-hash-table :test #'equal)
   "Hash table of transaction commands.
 Key is transaction id used in a dbgp command.
 Value is a cmd object.")
+
+(defmacro geben-dbgp-cmd-param-for (key)
+  `(plist-get '(:depth "-d"
+		:context-id "-c"
+		:max-data-size "-m"
+		:type "-t"
+		:page "-p"
+		:key "k"
+		:address "-a"
+		:name "-n"
+		:fileuri "-f"
+		:lineno "-n"
+		:class "-a"
+		:function "-m"
+		:state "-s"
+		:exception "-x"
+		:hit-value "-h"
+		:hit-condition "-o"
+		:run-once "-r"
+		:expression "--")
+	      ,key))
+
+(defmacro geben-dbgp-cmd-sequence (send-command &rest callback)
+  "Invoke expression sequentially.
+CALLBACK is invoked after the response message for SEND-COMMAND
+has been received, with three argument. The first one is
+SEND-COMMAND. The second is a response message. The third is
+decoded error message or nil."
+  `(let (tid cmd)
+     (when (and (setq tid ,send-command)
+		(setq cmd (gethash tid geben-dbgp-cmd-hash)))
+       (geben-dbgp-cmd-add-callback cmd ,@callback))))
 
 (defmacro geben-dbgp-cmd-store (tid cmd)
   "Store a CMD to the command transaction list.
@@ -495,18 +385,714 @@ Command callbacks is invoked at when command is finished."
   `(dolist (cb (list ,@callback))
      (plist-put ,cmd :callback (cons cb (plist-get cmd :callback)))))
 
-(defmacro geben-dbgp-cmd-sequence (send-command &rest callback)
-  "Invoke expression sequentially.
-CALLBACK is invoked after the response message for SEND-COMMAND
-has been received, with three argument. The first one is
-SEND-COMMAND. The second is a response message. The third is
-decoded error message or nil."
-  `(let (tid cmd)
-     (when (and (setq tid ,send-command)
-		(setq cmd (gethash tid geben-dbgp-cmd-hash)))
-       (geben-dbgp-cmd-add-callback cmd ,@callback))))
+;;--------------------------------------------------------------
+;; features
+;;--------------------------------------------------------------
 
-;; -- [code hash] --
+(defcustom geben-dbgp-feature-list
+  '((:set max_data 32768)
+    (:set max_depth 1)
+    (:set max_children 32)
+    (:get breakpoint_types geben-dbgp-store-breakpoint-types))
+  "*Specifies set of feature variables for each new debugging session.
+Each entry forms a list (METHOD FEATURE_NAME VALUE_OR_CALLBACK).
+METHOD is either `:get' or `:set'.
+FEATURE_NAME is a feature name described in DBGp specification.
+VALUE_OR_CALLBACK is, when the METHOD is `:get' then it should
+be symbol of a callback function will be invoked 3 arguments
+\(CMD MSG ERR), which are results of feature_get DBGp command.
+If the method is `:set' VALUE_OR_CALLBACK can be either a value
+or a symbol of a function. In the latter case the result value
+of the function is passed to feature_set DBGp command."
+  :group 'geben
+  :type '(repeat (list (radio (const :get)
+			      (const :set))
+		       (radio (const :help-echo ":get" :tag "language_supports_threads (:get)" language_supports_threads)
+			      (const :tag "language_name (:get)" language_name)
+			      (const :tag "encoding (:get)" encoding)
+			      (const :tag "protocol_version (:get)" protocol_version)
+			      (const :tag "supports_async (:get)" supports_async)
+			      (const :tag "data_encoding (:get)" data_encoding)
+			      (const :tag "breakpoint_languages (:get)" breakpoint_languages)
+			      (const :tag "breakpoint_types (:get)" breakpoint_types)
+			      (const :tag "multiple_sessions (:get :set)" multiple_sessions)
+			      (const :tag "encoding (:get :set)" encoding)
+			      (const :tag "max_children (:get :set)" max_children)
+			      (const :tag "max_data (:get :set)" max_data)
+			      (const :tag "max_depth (:get :set)" max_depth)
+			      (const :tag "supports_postmortem (:get)" supports_postmortem)
+			      (const :tag "show_hidden (:get :set)" show_hidden)
+			      (const :tag "notify_ok (:get :set)" notify_ok))
+		       sexp)))
+
+(defun geben-dbgp-init-features ()
+  "Configure debugger engine with value of `geben-dbgp-feature-list'."
+  (dolist (entry geben-dbgp-feature-list)
+    (let ((method (car entry))
+	  (name (symbol-name (nth 1 entry)))
+	  (param (nth 2 entry)))
+      (case method
+	(:set 
+	 (let ((value (cond
+		       ((null param) nil)
+		       ((symbolp param)
+			(if (fboundp param)
+			    (funcall param)
+			  (if (boundp param)
+			      (symbol-value param)
+			    (symbol-name param))))
+		       (t param))))
+	   (geben-dbgp-command-feature-set name value)))
+	(:get
+	 (if (and (symbolp param)
+		  (fboundp param))
+	     (geben-dbgp-cmd-sequence
+	      (geben-dbgp-command-feature-get name)
+	      param)
+	   (error "`geben-dbgp-feature-alist' has invalid entry: %S" entry)))))))
+
+;;--------------------------------------------------------------
+;; tid
+;;--------------------------------------------------------------
+
+(defvar geben-dbgp-tid 30000
+  "Transaction ID.")
+
+(defmacro geben-dbgp-next-tid ()
+  "Make a new transaction id."
+  `(incf geben-dbgp-tid))
+
+(defmacro geben-dbgp-tid-of (msg)
+  "Get a transaction id of MSG."
+  `(let ((tid (cdr (assoc 'transaction_id (cadr ,msg)))))
+     (if tid (string-to-number tid))))
+  
+;;--------------------------------------------------------------
+;; session
+;;--------------------------------------------------------------
+
+(defvar geben-dbgp-init-info nil
+  "DBGp initial message.")
+
+(defvar geben-dbgp-xdebug-p nil
+  "Non-nil means the debugger engine is Xdebug.")
+
+(defvar geben-dbgp-target-language nil
+  "The current debugging target language.
+This will be set at run-time.
+Possible values: :php :ruby :python etc.")
+
+(defvar geben-dbgp-current-status nil
+  "Store the current session status")
+
+(defmacro geben-dbgp-in-session ()
+  `(not (null geben-dbgp-init-info)))
+  
+(defun geben-dbgp-update-session-status (msg)
+  "Remain current status of the current session."
+  (case (xml-node-name msg)
+    ('connect
+     (setq geben-dbgp-current-status 'connect))
+    ('init
+     (setq geben-dbgp-current-status 'init))
+    ('response
+     (let ((status (xml-get-attribute msg 'status)))
+       (when (string< "" status)
+	 (setq geben-dbgp-current-status (intern status)))))))
+
+;;--------------------------------------------------------------
+;; stack
+;;--------------------------------------------------------------
+
+(defvar geben-dbgp-current-stack nil
+  "Current stack list of the debuggee script.")
+
+;; backtrace
+
+(defface geben-backtrace-fileuri
+  '((((class color))
+     (:foreground "green" :weight bold))
+    (t (:weight bold)))
+  "Face used to highlight fileuri in backtrace buffer."
+  :group 'geben-highlighting-faces)
+
+(defface geben-backtrace-lineno
+  '((t :inherit font-lock-variable-name-face))
+  "Face for displaying line numbers in backtrace buffer."
+  :group 'geben-highlighting-faces)
+
+(defcustom geben-backtrace-mode-hook nil
+  "*Hook running at when GEBEN's backtrace buffer is initialized."
+  :group 'geben
+  :type 'hook)
+
+(defun geben-dbgp-backtrace ()
+  "Display backtrace."
+  (unless (geben-dbgp-in-session)
+    (error "GEBEN is out of debugging session."))
+  (let ((buf (get-buffer-create geben-backtrace-buffer-name)))
+    (with-current-buffer buf
+      (setq buffer-read-only nil)
+      (buffer-disable-undo)
+      (erase-buffer)
+      (dotimes (i (length geben-dbgp-current-stack))
+	(let* ((stack (second (nth i geben-dbgp-current-stack)))
+	       (fileuri (geben-dbgp-regularize-fileuri (cdr (assq 'filename stack))))
+	       (lineno (cdr (assq 'lineno stack)))
+	       (where (cdr (assq 'where stack))))
+	  (insert (format "%s:%s %s\n"
+			  (propertize fileuri 'face "geben-backtrace-fileuri")
+			  (propertize lineno 'face "geben-backtrace-lineno")
+			  where))
+	  (put-text-property (save-excursion (forward-line -1) (point))
+			     (point)
+			     'geben-stack-frame
+			     (list :fileuri fileuri :lineno lineno))))
+      (setq buffer-read-only t)
+      (geben-backtrace-mode)
+      (goto-char (point-min)))
+    (geben-dbgp-display-window buf)))
+
+(defvar geben-backtrace-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map [mouse-2] 'geben-backtrace-mode-mouse-goto)
+    (define-key map "\C-m" 'geben-backtrace-mode-goto)
+    (define-key map "q" 'geben-backtrace-mode-quit)
+    (define-key map "p" 'previous-line)
+    (define-key map "n" 'next-line)
+    (define-key map "?" 'geben-backtrace-mode-help)
+    map)
+  "Keymap for `geben-backtrace-mode'")
+    
+(defun geben-backtrace-mode ()
+  "Major mode for GEBEN's backtrace output.
+The buffer commands are:
+\\{geben-backtrace-mode-map}"
+  (interactive)
+  (kill-all-local-variables)
+  (use-local-map geben-backtrace-mode-map)
+  (setq major-mode 'geben-backtrace-mode)
+  (setq mode-name "GEBEN backtrace")
+  (set (make-local-variable 'revert-buffer-function)
+       (lambda (a b) nil))
+  (and (fboundp 'font-lock-defontify)
+       (add-hook 'change-major-mode-hook 'font-lock-defontify nil t))
+  (if (fboundp 'run-mode-hooks)
+      (run-mode-hooks 'geben-backtrace-mode-hook)
+    (run-hooks 'geben-backtrace-mode-hook)))
+
+(defalias 'geben-backtrace-mode-mouse-goto 'geben-backtrace-mode-goto)
+(defun geben-backtrace-mode-goto (&optional event)
+  (interactive (list last-nonmenu-event))
+  (let ((stack-frame
+	 (if (or (null event)
+		 (not (listp event)))
+	     ;; Actually `event-end' works correctly with a nil argument as
+	     ;; well, so we could dispense with this test, but let's not
+	     ;; rely on this undocumented behavior.
+	     (get-text-property (point) 'geben-stack-frame)
+	   (with-current-buffer (window-buffer (posn-window (event-end event)))
+	     (save-excursion
+	       (goto-char (posn-point (event-end event)))
+	       (get-text-property (point) 'geben-stack-frame)))))
+	same-window-buffer-names
+	same-window-regexps)
+    (when stack-frame
+      (geben-dbgp-indicate-current-line (plist-get stack-frame :fileuri)
+					(plist-get stack-frame :lineno)
+					t))))
+
+(defun geben-backtrace-mode-quit ()
+  "Quit and bury the backtrace mode buffer."
+  (interactive)
+  (quit-window)
+  (geben-where))
+
+(defun geben-where ()
+  "Move to the current breaking point."
+  (interactive)
+  (if geben-dbgp-current-stack
+      (let* ((stack (second (car geben-dbgp-current-stack)))
+	     (fileuri (geben-dbgp-regularize-fileuri (cdr (assq 'filename stack))))
+	     (lineno (cdr (assq 'lineno stack))))
+	(geben-dbgp-indicate-current-line fileuri lineno t))
+    (when (interactive-p)
+      (message "GEBEN is not started."))))
+
+(defun geben-backtrace-mode-help ()
+  "Display description and key bindings of `geben-backtrace-mode'."
+  (interactive)
+  (describe-function 'geben-backtrace-mode))
+
+;;--------------------------------------------------------------
+;; context
+;;--------------------------------------------------------------
+
+(defface geben-context-category-face
+  '((((class color))
+     :background "purple"
+     :foreground "white"
+     :bold t))
+  "Face used to highlight context category name."
+  :group 'geben-highlighting-faces)
+
+(defface geben-context-variable-face
+  '((t :inherit 'font-lock-variable-name-face))
+  "Face used to highlight variable name."
+  :group 'geben-highlighting-faces)
+
+(defface geben-context-type-face
+  '((t :inherit 'font-lock-type-face))
+  "Face used to highlight type name."
+  :group 'geben-highlighting-faces)
+  
+(defface geben-context-class-face
+  '((t :inherit 'font-lock-constant-face))
+  "Face used to highlight type name."
+  :group 'geben-highlighting-faces)
+  
+(defface geben-context-string-face
+  '((t :inherit 'font-lock-string-face))
+  "Face used to highlight string value."
+  :group 'geben-highlighting-faces)
+  
+(defface geben-context-constant-face
+  '((t :inherit 'font-lock-constant-face))
+  "Face used to highlight numeric value."
+  :group 'geben-highlighting-faces)
+  
+(defvar geben-dbgp-context-names-alist nil
+  "Context names alist.
+KEY is a context name string.
+VALUE is a context id.")
+
+(defvar geben-dbgp-context-variables nil
+  "Context variables.
+The structure is: ((context-id . ((old . (name type value))
+                                  (new . (name type value)))))")
+
+(defvar geben-dbgp-context-tid 0
+  "Transaction id to which the current context variables belong.")
+
+(defvar geben-dbgp-context-expanded-variables nil
+  "Context variables in expanded state.")
+
+(defvar geben-dbgp-context-where nil)
+(defvar geben-dbgp-context-depth nil)
+(defvar geben-dbgp-context-loading nil)
+(defvar geben-dbgp-prop-tree-fill-children-hook 'geben-dbgp-context-fill-tree-children)
+
+;; context list accessors
+
+(defmacro geben-dbgp-ctx-get-list (cid)
+  "Get context list for the context id CID."
+  `(assq ,cid geben-dbgp-context-variables))
+
+(defmacro geben-dbgp-ctx-get-old-list (cid)
+  "Get previous context list for the context id CID."
+  `(cdr (assq 'old (geben-dbgp-ctx-get-list ,cid))))
+
+(defmacro geben-dbgp-ctx-get-new-list (cid)
+  "Get the current context list for the context id CID."
+  `(cdr (assq 'new (geben-dbgp-ctx-get-list ,cid))))
+
+(defmacro geben-dbgp-ctx-update-list (cid list)
+  "Update the current context list for the context id CID with LIST."
+  `(let* ((clist (geben-dbgp-ctx-get-list ,cid))
+	  (old (assq 'new clist)))
+     (setcdr clist (list (cons 'old (cdr old))
+			 (cons 'new ,list)))))
+
+;; context property list accessors
+
+(defmacro geben-dbgp-prop-has-children (property)
+  "Check whether PROPERTY has any children."
+  `(equal "1" (xml-get-attribute ,property 'children)))
+
+(defun geben-dbgp-prop-typeinfo (property)
+  "Get type information of PROPERTY to display it in the context buffer."
+  (let ((type (if (xml-get-attribute property 'type)
+		  (intern (xml-get-attribute property 'type))
+		nil))
+	typeinfo)
+    (setq typeinfo
+	  (cond
+	   ((null type) nil)
+	   ((member type '(int float))
+	    (list :type type
+		  :type-visiblep nil
+		  :value-face 'geben-context-constant-face))
+	   ((eq type 'bool)
+	    (list :type type
+		  :type-visiblep nil
+		  :value-face 'geben-context-constant-face
+		  :value-formatter 'geben-dbgp-prop-format-bool))
+	   ((eq type 'string)
+	    (list :type type
+		  :type-visiblep nil
+		  :value-face 'geben-context-string-face))
+	   ((member type '(array hash))
+	    (list :type type
+		  :type-visiblep nil
+		  :name-formatter 'geben-dbgp-prop-format-array-name
+		  :value-face 'default))
+	   ((eq type 'null)
+	    (list :type type
+		  :type-visiblep nil
+		  :value-face 'geben-context-constant-face
+		  :value-formatter (lambda (value) "null")))
+	   ((eq type 'resource)
+	    (list :type type
+		  :type-visiblep t
+		  :value-face 'geben-context-constant-face))
+	   ((eq type 'object)
+	    (list :type (if (xml-get-attribute property 'classname)
+			    (intern (xml-get-attribute property 'classname))
+			  type)
+		  :type-visiblep t
+		  :type-face 'geben-context-class-face
+		  :value-face 'default))
+	   ((eq type 'uninitialized)
+	    (list :type 'undef
+		  :type-visiblep t
+		  :type-face 'geben-context-type-face
+		  :value-face 'default))
+	   (t
+	    (list :type type
+		  :type-visiblep t
+		  :type-face 'geben-context-type-face
+		  :value-face 'default))))
+    typeinfo))
+
+(defun geben-dbgp-prop-format-bool (value)
+  "Format VALUE in the debuggee language expression."
+  (let ((bool (if (equal "0" value) nil t)))
+    (if bool "true" "false")))
+
+(defun geben-dbgp-prop-format-array-name (property)
+  "Format array element name in the debuggee language expression."
+  (format "%s[%s]"
+	  (propertize (xml-get-attribute property 'name)
+		      'face 'geben-context-variable-face)
+	  (propertize (xml-get-attribute property 'numchildren)
+		      'face 'geben-context-constant-face)))
+
+(defun geben-dbgp-prop-get-attribute (property sym)
+  "Get attribute SYM from PROPERTY."
+  ;; DBGp specs specifies property attributes of context_get and
+  ;; property_get commands. But some debugger engines have values not
+  ;; as attributes but child elements."
+  (let ((node (car (xml-get-children property sym))))
+    (if (consp node)
+	(geben-dbgp-decode-string (xml-node-children node)
+				  (xml-get-attribute node 'encoding)
+				  'utf-8)
+      (xml-get-attribute property sym))))
+
+(defmacro geben-dbgp-prop-get-name (property)
+  "Get name attribute value from PROPERTY."
+  `(geben-dbgp-prop-get-attribute ,property 'name))
+	
+(defmacro geben-dbgp-prop-get-fullname (property)
+  "Get fullname attribute value from PROPERTY."
+  `(geben-dbgp-prop-get-attribute ,property 'fullname))
+
+(defun geben-dbgp-prop-get-value (property)
+  "Get value from PROPERTY."
+  (let ((node (car (xml-get-children property 'value))))
+    (if (consp node)
+	(geben-dbgp-decode-string (xml-node-children node)
+				  (xml-get-attribute node 'encoding)
+				  'utf-8)
+      (geben-dbgp-decode-string (xml-node-children property)
+				(xml-get-attribute property 'encoding)
+				'utf-8))))
+
+;; context property tree widget
+
+(defun geben-dbgp-prop-tree-open (tree)
+  "Expand TREE."
+  (let ((marker (widget-get tree :from)))
+    (when (markerp marker)
+      (with-current-buffer (marker-buffer marker)
+	(goto-char marker)
+	(call-interactively 'widget-button-press)
+	(unless (widget-get tree :open)
+	  (call-interactively 'widget-button-press))))))
+
+(defun geben-dbgp-prop-tree-expand-p (tree)
+  "A tree widget callback function to indicate whether TREE is able to expand."
+  (or (geben-dbgp-prop-tree-has-complete-children tree)
+      (and (run-hook-with-args 'geben-dbgp-prop-tree-fill-children-hook
+			       tree)
+	   nil)))
+
+(defun geben-dbgp-prop-tree-expand (tree)
+  "A tree widget callback function to create child list of TREE."
+  (mapcar #'geben-dbgp-prop-tree-create-node
+	  (xml-get-children (widget-get tree :property) 'property)))
+
+(defun geben-dbgp-prop-tree-has-complete-children (tree)
+  "Determine whether TREE has complete child nodes.
+Child nodes can be short for :property property of TREE."
+  (let* ((property (widget-get tree :property))
+	 (children (xml-get-children property 'property))
+	 (numchildren (and children
+			   (string-to-number (xml-get-attribute property 'numchildren)))))
+    (and children
+	 (<= numchildren (length children)))))
+
+(defun geben-dbgp-prop-tree-create-node (property)
+  "Create nodes which represent PROPERTY."
+  (let* ((typeinfo (geben-dbgp-prop-typeinfo property))
+	 (value (geben-dbgp-prop-get-value property))
+	 tag)
+    (let ((formatter (plist-get typeinfo :name-formatter)))
+      (setq tag 
+	    (if formatter
+		(funcall formatter property)
+	      (propertize (geben-dbgp-prop-get-name property)
+			  'face 'geben-context-variable-face))))
+    (when (plist-get typeinfo :type-visiblep)
+      (setq tag (concat tag
+			(format "(%s)" (propertize
+					(symbol-name (plist-get typeinfo :type))
+					'face (plist-get typeinfo :type-face))))))
+    (let ((formatter (plist-get typeinfo :value-formatter)))
+      (when (or value formatter)
+	(setq tag (format "%-32s %s" tag
+			  (propertize (if formatter
+					  (funcall formatter value)
+					value)
+				      'face (plist-get typeinfo :value-face))))))
+    (if (geben-dbgp-prop-has-children property)
+	(list 'tree-widget
+	      :tag tag
+	      :property property
+	      :expander 'geben-dbgp-prop-tree-expand
+	      :expander-p 'geben-dbgp-prop-tree-expand-p)
+      (list 'item :tag (concat "   " tag)))))
+  
+(defun geben-dbgp-prop-tree-context-id (tree)
+  "Get context id to which TREE belongs."
+  (when tree
+    (let ((cid (widget-get tree :context-id)))
+      (or cid
+	  (geben-dbgp-prop-tree-context-id (widget-get tree :parent))))))
+
+;; context functions
+
+(defun geben-dbgp-context-update (depth &optional no-select-p)
+  "Update the context buffer with context of a stack DEPTH.
+If NO-SELECT-P is nil, the context buffer will be selected
+after updating."
+  (let ((buf (get-buffer geben-context-buffer-name)))
+    (when (and buf
+	       (or (null no-select-p)
+		   (get-buffer-window buf)) ;; only when the buffer is visible
+	       geben-dbgp-context-variables)
+      (with-current-buffer buf
+	(setq geben-dbgp-context-depth depth
+	      geben-dbgp-context-where
+	      (xml-get-attribute (nth depth geben-dbgp-current-stack) 'where)
+	      geben-dbgp-context-loading t))
+      ;; Remain the current tid.
+      ;; It is possible that the current context proceeds by step_in or
+      ;; other continuous commands while retrieving variables.
+      ;; To avoid mixing variables with multi context, remain something at here,
+      ;; tid, and check the value in the retrieving process.
+      (setq geben-dbgp-context-tid geben-dbgp-tid)
+      (geben-dbgp-context-update-loop geben-dbgp-tid
+				      depth
+				      (mapcar (lambda (context)
+						(cdr context))
+					      geben-dbgp-context-names-alist)
+				      no-select-p))))
+
+(defun geben-dbgp-context-update-1 (cmd msg err)
+  (when (get-buffer geben-context-buffer-name)
+    (geben-dbgp-ctx-update-list (geben-dbgp-cmd-param-arg cmd "-c")
+				(xml-get-children msg 'property))))
+
+(defun geben-dbgp-context-update-loop (tid-save depth context-id-list no-select-p)
+  (geben-dbgp-cmd-sequence
+   (geben-dbgp-command-context-get (car context-id-list) depth)
+   `(lambda (cmd msg err)
+      (when (and (not err)
+		 (eq ,tid-save geben-dbgp-context-tid))
+	(geben-dbgp-context-update-1 cmd msg err)
+	(let ((context-id-list (cdr (quote ,context-id-list))))
+	  (if context-id-list
+	      (geben-dbgp-context-update-loop (quote ,tid-save)
+					      (quote ,depth)
+					      context-id-list
+					      (quote ,no-select-p))
+	    (let ((buf (geben-dbgp-context-fill-buffer)))
+	      (when (and buf
+			 (not (quote ,no-select-p)))
+		(geben-dbgp-display-window buf)))))))))
+
+(defun geben-dbgp-context-fill-buffer ()
+  "Fill the context buffer with locally stored context list."
+  (let ((buf (get-buffer geben-context-buffer-name)))
+    (when buf
+      (with-current-buffer buf
+	(let ((inhibit-read-only t)
+	      (inhibit-modification-hooks t))
+	  (widen)
+	  (erase-buffer)
+	  (dolist (context-name geben-dbgp-context-names-alist)
+	    (let ((old (geben-dbgp-ctx-get-old-list (cdr context-name)))
+		  (new (geben-dbgp-ctx-get-new-list (cdr context-name))))
+	      (apply 'widget-create
+		     'tree-widget
+		     :tag (car context-name)
+		     :context-id (cdr context-name)
+		     :open t
+		     (mapcar #'geben-dbgp-prop-tree-create-node new))))
+	  (widget-setup))
+	(goto-char (point-min))
+	(setq geben-dbgp-context-loading nil)))
+    buf))
+
+(defun geben-dbgp-context-fill-tree-children (tree &optional tid-save)
+  (let ((tid-save (or tid-save
+		      geben-dbgp-context-tid))
+	(completed (geben-dbgp-prop-tree-has-complete-children tree)))
+    (when (eq geben-dbgp-context-tid tid-save)
+      (with-current-buffer (get-buffer geben-context-buffer-name)
+	(setq geben-dbgp-context-loading (not completed)))
+      (if completed
+	  (geben-dbgp-prop-tree-open tree)
+	(geben-dbgp-context-fill-tree-children-1 tree tid-save)))))
+
+(defun geben-dbgp-context-fill-tree-children-1 (tree tid-save)
+  (let* ((property (widget-get tree :property))
+	 (children (xml-get-children property 'property)))
+    (with-current-buffer (get-buffer geben-context-buffer-name)
+      ;; -- comment on :property-page property --
+      ;; debugger engine may lack of PAGESIZE in property message(bug).
+      ;; so the following code doesn't rely on PAGESIZE but uses own
+      ;; :property-page widget property.
+      (let* ((nextpage (if (widget-get tree :property-page)
+			   (1+ (widget-get tree :property-page))
+			 (if children 1 0)))
+	     (args (list :depth geben-dbgp-context-depth
+			 :context-id (geben-dbgp-prop-tree-context-id tree)
+			 :name (geben-dbgp-prop-get-fullname property)
+			 :page nextpage)))
+	(widget-put tree :property-page nextpage)
+	(when (string< "" (xml-get-attribute property 'key))
+	  (plist-put args :key (xml-get-attribute property 'key)))
+	(geben-dbgp-cmd-sequence
+	 (geben-dbgp-command-property-get args)
+	 `(lambda (cmd msg err)
+	    (unless err
+	      (geben-dbgp-context-append-tree-children (quote ,tid-save)
+						       (quote ,tree)
+						       (car (xml-get-children msg 'property)))
+	      (geben-dbgp-context-fill-tree-children (quote ,tree)
+						     (quote ,tid-save)))))))))
+
+(defun geben-dbgp-context-append-tree-children (tid-save tree property)
+  (when (eq geben-dbgp-context-tid tid-save)
+    (let ((tree-prop (widget-get tree :property)))
+      (nconc (or (cddr tree-prop)
+		 tree-prop)
+	     (cddr property)))))
+
+(defun geben-dbgp-context-display (depth)
+  "Display context variables in the context buffer."
+  (unless (geben-dbgp-in-session)
+    (error "GEBEN is out of debugging session."))
+  (let ((buf (get-buffer geben-context-buffer-name)))
+    (when (or (< depth 0)
+	      (< (length geben-dbgp-current-stack) (1+ depth)))
+      (error "GEBEN context display: invalid depth: %S" depth))
+    (unless buf
+      (setq buf (get-buffer-create geben-context-buffer-name))
+      (with-current-buffer buf
+	(geben-context-mode)))
+    (unless geben-dbgp-context-variables
+      (setq geben-dbgp-context-variables
+	    (mapcar (lambda (context)
+		      (list (cdr context)))
+		    geben-dbgp-context-names-alist)))
+    (geben-dbgp-context-update depth)))
+
+;; context mode
+
+(defcustom geben-context-mode-hook nil
+  "*Hook running at when GEBEN's context buffer is initialized."
+  :group 'geben
+  :type 'hook)
+
+(defvar geben-context-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map "\t" 'widget-forward)
+    (define-key map "S-\t" 'widget-backward)
+    ;;(define-key map "\C-m" 'geben-context-mode-expand)
+    ;;(define-key map "e" 'geben-context-mode-edit)
+    (define-key map "r" 'geben-dbgp-context-refresh)
+    (define-key map "q" 'geben-context-mode-quit)
+    (define-key map "p" 'widget-backward)
+    (define-key map "n" 'widget-forward)
+    (define-key map "?" 'geben-context-mode-help)
+    map)
+  "Keymap for `geben-context-mode'")
+
+(defalias 'geben-context-mode-quit 'geben-backtrace-mode-quit)
+
+(defun geben-context-mode ()
+  "Major mode for GEBEN's context output.
+The buffer commands are:
+\\{geben-context-mode-map}"
+  (interactive)
+  (kill-all-local-variables)
+  (use-local-map geben-context-mode-map)
+  (setq major-mode 'geben-context-mode)
+  (setq mode-name "GEBEN context")
+  (set (make-local-variable 'revert-buffer-function)
+       (lambda (a b) nil))
+  (and (fboundp 'font-lock-defontify)
+       (add-hook 'change-major-mode-hook 'font-lock-defontify nil t))
+  (if (fboundp 'run-mode-hooks)
+      (run-mode-hooks 'geben-context-mode-hook)
+    (run-hooks 'geben-context-mode-hook))
+  (buffer-disable-undo)
+  (make-local-variable 'geben-dbgp-context-where)
+  (make-local-variable 'geben-dbgp-context-depth)
+  (make-local-variable 'geben-dbgp-context-loading)
+  (set (make-local-variable 'tree-widget-theme) "geben")
+  (setq header-line-format
+	(list
+	 "Where: "
+	 'geben-dbgp-context-where
+	 "   "
+	 '(geben-dbgp-context-loading "(loading...)")
+	 ))
+  (setq buffer-read-only t))
+
+(defun geben-dbgp-context-refresh ()
+  "Refresh the context buffer."
+  (interactive)
+  (let ((buf (get-buffer geben-context-buffer-name)))
+    (when (and buf
+	       (buffer-live-p buf)
+	       (geben-dbgp-in-session))
+      (let (depth)
+	(with-current-buffer buf
+	  (setq depth geben-dbgp-context-depth))
+	(geben-dbgp-context-update depth)))))
+
+(defun geben-context-mode-help ()
+  "Display description and key bindings of `geben-context-mode'."
+  (interactive)
+  (describe-function 'geben-context-mode))
+
+;;--------------------------------------------------------------
+;; source hash
+;;--------------------------------------------------------------
 
 (defvar geben-dbgp-source-hash (make-hash-table :test #'equal)
   "Hash table of source files.
@@ -531,12 +1117,14 @@ A source object forms a property list with three properties
 	;; 	       (switch-to-buffer buf)
 	;; 	       (yes-or-no-p "Buffer is modified. Save it?")
 	;; 	       (geben-write-file-contents this buf))
-	(when (and geben-close-remote-file-after-finish
+	(when (and geben-close-mirror-file-after-finish
 		   (plist-get source :remotep))
 	  (set-buffer-modified-p nil)
 	  (kill-buffer buf))))))
 
-;; -- [redirect] --
+;;--------------------------------------------------------------
+;; redirect
+;;--------------------------------------------------------------
 
 (defvar geben-dbgp-redirect-stdout-current nil)
 (defvar geben-dbgp-redirect-stderr-current nil)
@@ -646,59 +1234,53 @@ Or to each own buffer."
 	(and (setq name (geben-dbgp-redirect-buffer-name :stderr))
 	     (get-buffer name)))))
 
-(defun geben-dbgp-redirect-buffer-visiblep ()
-  "Check whether any window displays any redirection buffer."
-  (let ((buf (geben-dbgp-redirect-buffer-existp)))
-    (and buf (get-buffer-window buf))))
-  
-(defun geben-dbgp-init-features ()
-  "Configure debugger engine with value of `geben-dbgp-feature-list'."
-  (dolist (entry geben-dbgp-feature-list)
-    (let ((method (car entry))
-	  (name (symbol-name (nth 1 entry)))
-	  (param (nth 2 entry)))
-      (case method
-	(:set 
-	 (let ((value (cond
-		       ((null param) nil)
-		       ((symbolp param)
-			(if (fboundp param)
-			    (funcall param)
-			  (if (boundp param)
-			      (symbol-value param)
-			    (symbol-name param))))
-		       (t param))))
-	   (geben-dbgp-command-feature-set name value)))
-	(:get
-	 (if (and (symbolp param)
-		  (fboundp param))
-	     (geben-dbgp-cmd-sequence
-	      (geben-dbgp-command-feature-get name)
-	      param)
-	   (error "`geben-dbgp-feature-alist' has invalid entry: %S" entry)))))))
+(defun geben-dbgp-dynamic-property-bufferp (buf)
+  (when (buffer-live-p buf)
+    (or (eq buf (get-buffer geben-context-buffer-name))
+	(eq buf (get-buffer (geben-dbgp-redirect-buffer-name :stdout)))
+	(eq buf (get-buffer (geben-dbgp-redirect-buffer-name :stderr))))))
 
-;; -- [breakpoints] --
+(defun geben-dbgp-dynamic-property-buffer-visiblep ()
+  "Check whether any window displays any property buffer."
+  (condition-case nil
+      (and (mapc (lambda (buf)
+		   (and (buffer-live-p buf)
+			(get-buffer-window buf)
+			(error nil)))
+		 (list (get-buffer geben-context-buffer-name)
+		       (geben-dbgp-redirect-buffer-existp)))
+	   nil)
+    (error t)))
+
+  
+;;--------------------------------------------------------------
+;; breakpoints
+;;--------------------------------------------------------------
 
 (defvar geben-dbgp-breakpoint-types '(:line :call :return :exception :conditional)
-  "Store breakpoint types supported by the current debugger engine.")
+  "Breakpoint types supported by the current debugger engine.")
 
 (defvar geben-dbgp-breakpoints nil
-  "A break point list")
+  "Break point list")
 
-(defface geben-breakpoint-fileuri
-  '((t (:inherit geben-backtrace-fileuri)))
-  "Face used to highlight fileuri in breakpoint list buffer."
+(defface geben-breakpoint-face
+  '((((class color))
+     :foreground "white"
+     :background "red1")
+    (t :inverse-video t))
+  "Face used to highlight various names.
+This includes element and attribute names, processing
+instruction targets and the CDATA keyword in a CDATA section.
+This is not used directly, but only via inheritance by other faces."
   :group 'geben-highlighting-faces)
 
-(defface geben-breakpoint-lineno
-  '((t (:inherit geben-backtrace-lineno)))
-  "Face for displaying line numbers in breakpoint list buffer."
-  :group 'geben-highlighting-faces)
-
-(defface geben-breakpoint-function
-  '((t (:inherit font-lock-function-name-face)))
-  "Face for displaying line numbers in breakpoint list buffer."
-  :group 'geben-highlighting-faces)
+(defcustom geben-show-breakpoints-debugging-only t
+  "*Specify breakpoint markers visibility.
+If the value is nil, GEBEN will always display breakpoint markers.
+If non-nil, displays the markers while debugging but hides after
+debugging is finished."
+  :group 'geben
+  :type 'boolean)
 
 (defun geben-dbgp-store-breakpoint-types (cmd msg err)
   (setq geben-dbgp-breakpoint-types nil)
@@ -729,6 +1311,8 @@ Or to each own buffer."
     ;; they don't return breakpoint types correctly.
     ;; To them put all of types to the list.
     (setq geben-dbgp-breakpoint-types '(:line :call :return :exception :conditional :watch))))
+
+;; breakpoint object manipulators
 
 (defun geben-dbgp-bp= (lhs rhs)
   "Return t if two breakpoint object point same thing."
@@ -888,30 +1472,45 @@ the file."
 
 (add-hook 'find-file-hooks 'geben-dbgp-bp-find-file-hook)
 
+;; breakpoint functions
+
 (defun geben-dbgp-restore-breakpoints ()
   "Restore breakpoints against new DBGp session."
   (let (overlay)
     (mapc (lambda (bp)
 	    (plist-put bp :id nil)
-	    (case (plist-get bp :type)
-	      (:line
-	       ;; User may edit code since previous debugging session
-	       ;; so that lineno breakpoints set before may moved.
-	       ;; The followings try to adjust breakpoint line to
-	       ;; nearly what user expect.
-	       (if (and (setq overlay (plist-get bp :overlay))
-			(geben-overlayp overlay)
-			(geben-overlay-livep overlay)
-			(eq (geben-overlay-buffer overlay)
-			    (find-buffer-visiting (or (plist-get bp :local-path) ""))))
-		   (with-current-buffer (geben-overlay-buffer overlay)
-		     (save-excursion
-		       (plist-put bp :lineno (progn (goto-char (geben-overlay-start overlay))
-						    (geben-what-line))))))))
+	    ;; User may edit code since previous debugging session
+	    ;; so that lineno breakpoints set before may moved.
+	    ;; The followings try to adjust breakpoint line to
+	    ;; nearly what user expect.
+	    (if (and (setq overlay (plist-get bp :overlay))
+		     (geben-overlayp overlay)
+		     (geben-overlay-livep overlay)
+		     (eq (geben-overlay-buffer overlay)
+			 (find-buffer-visiting (or (plist-get bp :local-path) ""))))
+		(with-current-buffer (geben-overlay-buffer overlay)
+		  (save-excursion
+		    (plist-put bp :lineno (progn (goto-char (geben-overlay-start overlay))
+						 (geben-what-line))))))
 	    (geben-dbgp-command-breakpoint-set bp))
 	  geben-dbgp-breakpoints)))
 
-;; --[breakpoint list]--
+;; breakpoint list
+
+(defface geben-breakpoint-fileuri
+  '((t (:inherit geben-backtrace-fileuri)))
+  "Face used to highlight fileuri in breakpoint list buffer."
+  :group 'geben-highlighting-faces)
+
+(defface geben-breakpoint-lineno
+  '((t (:inherit geben-backtrace-lineno)))
+  "Face for displaying line numbers in breakpoint list buffer."
+  :group 'geben-highlighting-faces)
+
+(defface geben-breakpoint-function
+  '((t (:inherit font-lock-function-name-face)))
+  "Face for displaying line numbers in breakpoint list buffer."
+  :group 'geben-highlighting-faces)
 
 (defun geben-dbgp-breakpoint-sort-pred (a b)
   (if (and (stringp (plist-get a :id))
@@ -1086,6 +1685,8 @@ Key mapping and other information is described its help page."
 	     (get-buffer geben-breakpoint-list-buffer-name))
     (geben-dbgp-breakpoint-list nil)))
 
+;; breakpoint list mode
+
 (defcustom geben-breakpoint-list-mode-hook nil
   "*Hook running at when GEBEN's breakpoint list buffer is initialized."
   :group 'geben
@@ -1102,6 +1703,7 @@ Key mapping and other information is described its help page."
     (define-key map "r" 'geben-breakpoint-list-refresh)
     (define-key map "p" 'previous-line)
     (define-key map "n" 'next-line)
+    (define-key map "?" 'geben-breakpoint-list-mode-help)
     map)
   "Keymap for `geben-breakpoint-list-mode'")
     
@@ -1198,7 +1800,14 @@ The buffer commands are:
   (interactive)
   (geben-dbgp-breakpoint-list-refresh))
 
-;;; dbgp protocol handler
+(defun geben-breakpoint-list-mode-help ()
+  "Display description and key bindings of `geben-breakpoint-list-mode'."
+  (interactive)
+  (describe-function 'geben-breakpoint-list-mode))
+
+;;------------------------------------------------------------------------
+;; DBGp protocol handler
+;;------------------------------------------------------------------------
 
 (defun geben-dbgp-entry (msg)
   "Analyze MSG and dispatch to a specific handler."
@@ -1237,6 +1846,8 @@ The buffer commands are:
   "Initialize session variables."
   (geben-dbgp-set-initial-message nil)
   (setq geben-dbgp-current-stack nil)
+  (setq geben-dbgp-context-names-alist nil)
+  (setq geben-dbgp-context-variables nil)
   (clrhash geben-dbgp-cmd-hash)
   (clrhash geben-dbgp-source-hash))
   
@@ -1249,6 +1860,7 @@ The buffer commands are:
   (geben-dbgp-init-redirects)
   (geben-dbgp-restore-breakpoints)
   (geben-dbgp-prepare-source-file (xml-get-attribute msg 'fileuri))
+  (geben-dbgp-command-context-names)
   (geben-dbgp-command-step-into))
 
 (defun geben-dbgp-set-initial-message (msg)
@@ -1306,7 +1918,10 @@ The buffer commands are:
       (message "GEBEN debugging session is finished."))
      ((equal status "break")
       (unless err
-	(geben-dbgp-command-stack-get))))))
+	(geben-dbgp-cmd-sequence
+	 (geben-dbgp-command-stack-get)
+	 (lambda (&rest arg)
+	   (geben-dbgp-context-update 0 t))))))))
 
 ;;; command sending
 
@@ -1380,6 +1995,21 @@ required for each dbgp command by the protocol specification."
 (defun geben-dbgp-response-stop (cmd msg)
   "A response message handler for \`stop\' command."
   nil)
+
+;; context
+
+(defun geben-dbgp-command-context-names (&optional depth)
+  (geben-dbgp-send-command "context_names"
+			   (and (numberp depth)
+				(cons "-d" depth))))
+
+(defun geben-dbgp-response-context-names (cmd msg)
+  (setq geben-dbgp-context-names-alist
+	(mapcar (lambda (context)
+		  (let ((name (xml-get-attribute context 'name))
+			(id (xml-get-attribute context 'id)))
+		    (cons name (string-to-number id))))
+		(xml-get-children msg 'context))))
 
 ;;; breakpoint_set
 
@@ -1637,19 +2267,43 @@ FILEURI is a uri of the target file of a debuggee site."
 	  (1 :redirect)
 	  (2 :intercept))))
 
+;; context
+
+(defun geben-dbgp-command-context-get (context-id &optional depth)
+  (geben-dbgp-send-command "context_get"
+			   (cons "-c" context-id)
+			   (and depth
+				(cons "-d" depth))))
+
+(defun geben-dbgp-response-context-get (cmd msg)
+  t)
+
+;; property
+
+(defun geben-dbgp-command-property-get (&rest args)
+  (apply 'geben-dbgp-send-command "property_get"
+	 (mapcar (lambda (key)
+		   (let ((arg (plist-get (car args) key)))
+		     (when arg
+		       (cons (geben-dbgp-cmd-param-for key) arg))))
+		 '(:depth :context-id :name :max-data-size :type :page :key :address))))
+
+(defun geben-dbgp-response-property-get (cmd msg)
+  t)
+
 ;;;
 
 (defun geben-dbgp-prepare-source-file (fileuri)
   "Prepare source file to be in the local machine.
 If the counter-file of FILEURI is already known by the current
 debugging session, do nothing.  
-If `geben-debug-target-remotep' is non-nil or not exists locally, fetch
+If `geben-always-use-mirror-file-p' is non-nil or not exists locally, fetch
 the file from remote site using \`source\' command then stores in
 a GEBEN's temporal directory tree."
   (setq fileuri (geben-dbgp-regularize-fileuri fileuri))
   (unless (geben-dbgp-get-local-path-of fileuri)
     (let ((local-path (geben-make-local-path fileuri)))
-      (if (or geben-debug-target-remotep
+      (if (or geben-always-use-mirror-file-p
 	      (not (file-exists-p local-path)))
 	  ;; haven't fetched remote source yet; fetch it.
 	  (geben-dbgp-command-source fileuri)
@@ -1678,14 +2332,14 @@ object, which contains information about a source file, to
 	(plist-get source :local-path)
       ;; not konwn for the current session.
       (let ((local-path (replace-regexp-in-string "^file:\\(//\\)?" "" fileuri)))
-	(when (and (not geben-debug-target-remotep)
+	(when (and (not geben-always-use-mirror-file-p)
 		   (file-exists-p local-path))
 	  (when (and markp
 		     (not (gethash fileuri geben-dbgp-source-hash)))
 	    (puthash fileuri (geben-dbgp-source-make fileuri nil local-path) geben-dbgp-source-hash))
 	  local-path)))))
 
-;; -- [gud] --
+;; gud
 
 (defcustom geben-dbgp-command-line "debugclient -p 9000"
   "*Command line string to execute DBGp client."
@@ -1717,7 +2371,7 @@ Parse STRING, find xml chunks, convert them to xmlized lisp objects
 and call `geben-dbgp-process-chunk' with each chunk."
   (setq gud-marker-acc (concat gud-marker-acc (delete ?\r string)))
   (let (xml-list disconnectp
-        (output ""))
+		 (output ""))
     (flet ((parse-xml (str)
                       (with-temp-buffer
                         (insert str)
@@ -1847,7 +2501,7 @@ If the optional argument COMMAND-LINE is nil, the value of
 ;;  miscellaneous functions
 ;;-------------------------------------------------------------
 
-;; -- [temporary directory] --
+;; temporary directory
 
 (defun geben-temp-dir ()
   "Get a temporary directory path for a GEBEN session."
@@ -1898,7 +2552,7 @@ If the optional argument COMMAND-LINE is nil, the value of
 	      (directory-files base-path nil nil t))
 	(delete-directory base-path))))
 
-;; -- [path]--
+;; path
 
 (defun geben-make-local-path (fileuri)
   "Make a path string correspond to FILEURI."
@@ -1908,7 +2562,7 @@ If the optional argument COMMAND-LINE is nil, the value of
       (setq local-path (url-unhex-string (substring local-path 1))))
     local-path))
 
-;; -- [source code file]--
+;; source code file
 
 (defun geben-visit-file (path)
   "Visit to a local source code file."
@@ -1921,14 +2575,14 @@ If the optional argument COMMAND-LINE is nil, the value of
 (defun geben-enter-geben-mode (buf)
   (geben-mode 1))
 
-;; -- [utility]--
+;; utility
 
 (defun geben-flatten (x)
   "Make cons X to a flat list."
   (flet ((rec (x acc)
-		(cond ((null x) acc)
-		      ((atom x) (cons x acc))
-		      (t (rec (car x) (rec (cdr x) acc))))))
+	      (cond ((null x) acc)
+		    ((atom x) (cons x acc))
+		    (t (rec (car x) (rec (cdr x) acc))))))
     (rec x nil)))
 
 (defun geben-what-line (&optional pos)
@@ -1942,7 +2596,7 @@ If POS is omitted, then the current position is used."
       (1+ (count-lines 1 (point))))))
 
 ;;
-;; -- [interactive commands] --
+;; interactive commands
 ;;
 
 ;;; #autoload
@@ -2012,7 +2666,7 @@ described its help page."
   (define-key geben-mode-map "q" 'geben-stop)
   ;;(define-key geben-mode-map "Q" 'geben-top-level-nonstop)
   ;;(define-key geben-mode-map "a" 'abort-recursive-edit)
-  (define-key geben-mode-map "S" 'geben-stop)
+  (define-key geben-mode-map "v" 'geben-display-context)
 
   ;; breakpoints
   (define-key geben-mode-map "b" 'geben-set-breakpoint-line)
@@ -2036,7 +2690,7 @@ described its help page."
   ;;(define-key geben-mode-map "W" 'geben-toggle-save-windows)
 
   ;; misc
-  ;;(define-key geben-mode-map "?" 'geben-help)
+  (define-key geben-mode-map "?" 'geben-mode-help)
   (define-key geben-mode-map "d" 'geben-backtrace)
 
   ;;(define-key geben-mode-map "-" 'negative-argument)
@@ -2064,6 +2718,11 @@ The geben-mode buffer commands:
 (add-hook 'kill-emacs-hook
 	  (lambda ()
 	    (geben-dbgp-reset)))
+
+(defun geben-mode-help ()
+  "Display description and key bindings of `geben-mode'."
+  (interactive)
+  (describe-function 'geben-mode))
 
 (defvar geben-step-type :step-into
   "Step command of what `geben-step-again' acts.
@@ -2168,11 +2827,11 @@ hit-value interactively.
 			(string-to-number
 			 (read-string "Number of hit to break: ")))
 		    hit-value))
-    (plist-put cmd :hit-value (if (and (numberp hit-value)
-				       (<= 0 hit-value))
-				  hit-value
-				0))
-    (geben-dbgp-command-breakpoint-set cmd))
+  (plist-put cmd :hit-value (if (and (numberp hit-value)
+				     (<= 0 hit-value))
+				hit-value
+			      0))
+  (geben-dbgp-command-breakpoint-set cmd))
 
 (defun geben-set-breakpoint-line (fileuri lineno &optional hit-value)
   "Set a breakpoint at the current line.
@@ -2380,6 +3039,18 @@ from \`redirect', \`intercept' and \`disabled'."
       (geben-dbgp-command-stdout mode))
     (when (memq target '(:stderr :both))
       (geben-dbgp-command-stderr mode))))
+
+(defun geben-display-context (&optional depth)
+  (interactive (list (cond
+		      ((null current-prefix-arg) 0)
+		      ((numberp current-prefix-arg)
+		       current-prefix-arg)
+		      ((listp current-prefix-arg)
+		       (if (fboundp 'read-number)
+			   (read-number "Depth: " 0)
+			 (string-to-number (read-string "Depth: " "0"))))
+		      (t nil))))
+  (geben-dbgp-context-display (or depth 0)))
 
 (provide 'geben)
 
