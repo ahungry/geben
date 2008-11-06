@@ -1,3 +1,12 @@
+2008-11-06  reedom  <fujinaka.tohru@gmail.com>
+
+        * [FIX] When setting breakpoint which needed fileuri against
+                remote script file interactively, GEBEN asked with
+                invalid fileuri as a default.
+        * [FIX] Once debugger engine passed invalid fileuri, which
+                have http:// scheme instead of file://, GEBEN made
+                Emacs raise exceptions at exitting Emacs.
+        
 2008-11-04  reedom  <fujinaka.tohru@gmail.com>
 
         * [ADD] Added Makefile.

@@ -1,3 +1,9 @@
+Version 0.19 (2008-11-06)
+
+  * fixed: Emacs may not be able to exit by exception.
+  * fixed: Default fileuri parameter on setting breakpoint may be
+           invalid.
+
 Version 0.18 (2008-11-04)
 
   From this release GEBEN has shifted from beta stage.

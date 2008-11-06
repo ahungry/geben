@@ -2312,16 +2312,26 @@ a GEBEN's temporal directory tree."
 	  (puthash fileuri source geben-dbgp-source-hash)
 	  (geben-visit-file (plist-get source :local-path)))))))
 
-(defun geben-dbgp-find-fileuri (path)
+(defun geben-dbgp-find-fileuri (local-path)
   "Find fileuri for PATH."
-  (let (fileuri)
-    (maphash (lambda (key source)
-	       (when (string= (plist-get source :local-path) path)
-		 ;; todo: how can I stop this iteration?
-		 (setq fileuri key)))
-	     geben-dbgp-source-hash)
-    fileuri))
+  (block finder
+	(maphash (lambda (key source)
+		   (when (string= (plist-get source :local-path) local-path)
+		     (return-from finder key)))
+		   geben-dbgp-source-hash)))
 	     
+(defun geben-dbgp-get-fileuri-of (local-path)
+  (or (geben-dbgp-find-fileuri local-path)
+      (let* ((temp-dir (geben-temp-dir))
+	     (temp-len (length temp-dir)))
+	(concat "file://"
+		(if (and (< temp-len (length local-path))
+			 (string= temp-dir (substring local-path 0 temp-len)))
+		    (substring local-path
+			       (- temp-len
+				  (if (string< "" (file-name-nondirectory temp-dir)) 0 1)))
+		  local-path)))))
+  
 (defun geben-dbgp-get-local-path-of (fileuri &optional markp)
   "Try to get local path equivalent to FILEURI.
 If MARKP is non-nil, this function creates and stores new source
@@ -2852,7 +2862,7 @@ hit-value interactively."
 				  :fileuri (or fileuri
 					       (geben-dbgp-find-fileuri local-path)
 					       (geben-dbgp-find-fileuri (file-truename local-path))
-					       (concat "file://" (file-truename local-path)))
+					       (geben-dbgp-get-fileuri-of (file-truename local-path)))
 				  :lineno (or (numberp lineno)
 					      (geben-what-line))
 				  :local-path local-path
@@ -2881,8 +2891,9 @@ hit-value interactively."
 		(unless (member geben-dbgp-target-language '(:php :ruby))
 		  ;; at this present some debugger engines' implementation is buggy:
 		  ;; some requires fileuri and some don't accept it.
-		  (read-string "fileuri: " 
-			       (concat "file://" (file-truename (buffer-file-name (current-buffer))))
+		  (read-string "fileuri: "
+			       (geben-dbgp-get-fileuri-of
+				(file-truename (buffer-file-name (current-buffer))))
 			       'geben-set-breakpoint-fileuri-history))
 		current-prefix-arg))
   (when (string< "" name)
@@ -2909,8 +2920,9 @@ hit-value interactively."
 		(unless (member geben-dbgp-target-language '(:php :ruby))
 		  ;; at this present some debugger engines' implementations are buggy:
 		  ;; some requires fileuri and some don't accept it.
-		  (read-string "fileuri: " 
-			       (concat "file://" (file-truename (buffer-file-name (current-buffer))))
+		  (read-string "fileuri: "
+			       (geben-dbgp-get-fileuri-of
+				(file-truename (buffer-file-name (current-buffer))))
 			       'geben-set-breakpoint-fileuri-history))
 		current-prefix-arg))
   (when (string< "" name)
@@ -2949,7 +2961,8 @@ hit-value interactively."
   (interactive (list
 		(read-string "Expression: " ""
 			     'geben-set-breakpoint-condition-history)
-		(concat "file://" (file-truename (buffer-file-name (current-buffer))))
+		(geben-dbgp-get-fileuri-of
+		 (file-truename (buffer-file-name (current-buffer))))
 		(read-string "Line number to evaluate (blank means entire file): "
 			     (number-to-string (geben-what-line)))
 		current-prefix-arg))
