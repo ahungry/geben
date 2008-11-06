@@ -4,7 +4,7 @@
 ;; Filename: geben.el
 ;; Author: reedom <fujinaka.tohru@gmail.com>
 ;; Maintainer: reedom <fujinaka.tohru@gmail.com>
-;; Version: 0.18
+;; Version: 0.19
 ;; URL: http://code.google.com/p/geben-on-emacs/
 ;; Keywords: DBGp, debugger, PHP, Xdebug, Perl, Python, Ruby, Tcl, Komodo
 ;; Compatibility: Emacs 22.1
@@ -1106,7 +1106,7 @@ A source object forms a property list with three properties
   `(list :fileuri ,fileuri :remotep ,remotep :local-path ,local-path))
 
 (defun geben-dbgp-cleanup-file (source)
-  (let ((buf (find-buffer-visiting (plist-get source :local-path))))
+  (let ((buf (find-buffer-visiting (or (plist-get source :local-path) ""))))
     (when buf
       (with-current-buffer buf
 	(when (and (boundp 'geben-mode)
@@ -2213,11 +2213,11 @@ FILEURI is a uri of the target file of a debuggee site."
   "A response message handler for \`source\' command."
   (let* ((fileuri (geben-dbgp-cmd-param-arg cmd "-f"))
 	 ;; (decode-coding-string (base64-decode-string (third msg)) 'undecided)))))
-	 (path (geben-temp-path-for-fileuri fileuri)))
-    (when path
-      (geben-temp-store path (base64-decode-string (third msg))))
-    (puthash fileuri (geben-dbgp-source-make fileuri t path) geben-dbgp-source-hash)
-    (geben-visit-file path)))
+	 (local-path (geben-temp-path-for-fileuri fileuri)))
+    (when local-path
+      (geben-temp-store local-path (base64-decode-string (third msg)))
+      (puthash fileuri (geben-dbgp-source-make fileuri t local-path) geben-dbgp-source-hash)
+      (geben-visit-file local-path))))
 
 (defun geben-dbgp-command-feature-get (feature)
   "Send \`feature_get\' command."
@@ -2302,7 +2302,7 @@ the file from remote site using \`source\' command then stores in
 a GEBEN's temporal directory tree."
   (setq fileuri (geben-dbgp-regularize-fileuri fileuri))
   (unless (geben-dbgp-get-local-path-of fileuri)
-    (let ((local-path (geben-make-local-path fileuri)))
+    (let ((local-path (geben-temp-path-for-fileuri fileuri)))
       (if (or geben-always-use-mirror-file-p
 	      (not (file-exists-p local-path)))
 	  ;; haven't fetched remote source yet; fetch it.
@@ -2341,7 +2341,7 @@ object, which contains information about a source file, to
     (if source
 	(plist-get source :local-path)
       ;; not konwn for the current session.
-      (let ((local-path (replace-regexp-in-string "^file:\\(//\\)?" "" fileuri)))
+      (let ((local-path (geben-make-local-path fileuri)))
 	(when (and (not geben-always-use-mirror-file-p)
 		   (file-exists-p local-path))
 	  (when (and markp
@@ -2524,8 +2524,10 @@ If the optional argument COMMAND-LINE is nil, the value of
 
 (defun geben-temp-path-for-fileuri (fileuri)
   "Generate path string from FILEURI to store files temporarily."
-  (when (string-match "^file:\\(//\\)?/" fileuri)
-    (expand-file-name (substring fileuri (match-end 0)) (geben-temp-dir))))
+  (let ((path (geben-make-local-path fileuri)))
+    (if path
+	(expand-file-name (substring path 1) (geben-temp-dir))
+      fileuri)))
 
 (defun geben-temp-store (path source)
   "Store temporary file."
@@ -2566,11 +2568,23 @@ If the optional argument COMMAND-LINE is nil, the value of
 
 (defun geben-make-local-path (fileuri)
   "Make a path string correspond to FILEURI."
-  (let ((local-path (replace-regexp-in-string "^file:\\(//\\)?" "" fileuri)))
-    (when (eq system-type 'windows-nt)
-      (require 'url-util)
-      (setq local-path (url-unhex-string (substring local-path 1))))
-    local-path))
+  (when (string-match "^\\(file\\|https?\\):/+" fileuri)
+    (let ((path (substring fileuri (1- (match-end 0)))))
+      (setq path (or (and (eq system-type 'windows-nt)
+			  (require 'url-util)
+			  (url-unhex-string path))
+		     path))
+      (if (string= "" (file-name-nondirectory path))
+	  (expand-file-name (geben-generate-default-file-name) path)
+	path))))
+
+(defun geben-generate-default-file-name ()
+  (case geben-dbgp-target-language
+    (:php "index.php")
+    (:python "index.py")
+    (:perl "index.pl")
+    (:ruby "index.rb")
+    (t "index.html")))
 
 ;; source code file
 
@@ -2609,7 +2623,7 @@ If POS is omitted, then the current position is used."
 ;; interactive commands
 ;;
 
-;;; #autoload
+;;;###autoload
 (defun geben (&optional quit)
   "Start GEBEN, a PHP source level debugger.
 Prefixed with \\[universal-argument], GEBEN quits immediately.
@@ -2718,6 +2732,7 @@ described its help page."
   (define-key geben-mode-map "\C-c\C-t" 'geben-set-breakpoint-line)
   (define-key geben-mode-map "\C-c\C-l" 'geben-where))
 
+;;;###autoload
 (define-minor-mode geben-mode
   "Minor mode for debugging source code with GEBEN.
 The geben-mode buffer commands:

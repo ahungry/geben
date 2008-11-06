@@ -1,4 +1,4 @@
-GEBEN-0.18 (Beta)
+GEBEN-0.19 (Beta)
 -----------------
 
 GEBEN is a software package that interfaces Emacs to DBGp protocol
@@ -154,6 +154,16 @@ code/documents/design contributions, and donations.
 To submit one or more of them, please visit our web site.
 
  http://code.google.com/p/geben-on-emacs/
+
+Also there are mailinglists.
+
+For usage questions:
+ http://groups.google.com/group/geben-users
+
+For package contributions:
+ http://groups.google.com/group/geben-dev
+
+Your posts will make GEBEN development progress.
 
 Thank you.
 
