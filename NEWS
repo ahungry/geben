@@ -1,3 +1,18 @@
+Version 0.20 (2009-01-08)
+
+  Redesigned. 
+
+  From this release GEBEN does not require an external DBGp client
+  program.
+
+  * changed:
+    - GEBEN always mirrors debuggee script files under `geben-mode'.
+      When you need to open the original script file to edit, hit any
+      unbound keys of geben-mode and GEBEN asks you to open one. If
+      you respond `yes' then GEBEN attempts to visit the file via
+      `TRAMP'.
+    - More, many things.
+
 Version 0.19 (2008-11-06)
 
   * fixed: Emacs may not be able to exit by exception.

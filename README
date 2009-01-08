@@ -1,4 +1,4 @@
-GEBEN-0.19 (Beta)
+GEBEN-0.20 (Beta)
 -----------------
 
 GEBEN is a software package that interfaces Emacs to DBGp protocol
@@ -23,18 +23,20 @@ REQUIREMENTS
 ------------
 
 [server side]
- - linux box (currently not working on Windows box)
- - Web server with PHP engine
- - `Xdebug' PHP extension 2.0.3 or later, configured as remote
-   debugging enabled with DBGp protocol
+ - DBGp protocol enabled script engine, like:
+   - PHP with Xdebug
+   - Python eith Komode Debugger Extension
+   - etc.
 
 [client side]
  - Emacs22.1 or later
- - xdebugclient
 
 
 BIG CHANGES
 -----------
+
+- Since version 0.20 GEBEN does not require an external DBGp client
+  program `debugclient'.
 
 - At version 0.18 GEBEN dropped Emacs 21.4.
 
@@ -65,12 +67,7 @@ INSTALLATION
 
 [client side]
 
-1. Download debugclient executable from Xdebug web site
-   (http://xdebug.org/) and place it in a directory for
-   executables. (e.g. /usr/local/bin/)
-1' Or build manually from source code. Sources are included in
-   Xdebug source code package.
-2. Unpack GEBEN source code package and change directory to the
+1. Unpack GEBEN source code package and change directory to the
    unpacked directory.
 
 <With GNU make command>
@@ -79,15 +76,16 @@ b. If you are an administrator, Run: sudo make install
 b' Or Run: SITELISP=$HOME/path/to/install make install
 
 <Without GNU make command>
-a. Byte compile `geben.el'.
-b. Copy `geben.elc' and entire `tree-widget' directory to any
-   directory where Emacs can find.(Or add the path to `load-path'
+a. Byte compile 'dbgp.el'.
+b. Byte compile `geben.el'.
+c. Copy `dbgp.elc', `geben.elc' and entire `tree-widget' directory to
+   any directory where Emacs can find.(Or add the path to `load-path'
    list)
 
 <common>
-3. Insert autoload hooks into your .Emacs file.
+2. Insert autoload hooks into your .Emacs file.
     -> (autoload 'geben "geben" "PHP Debugger on Emacs" t)
-4. Restart Emacs.
+3. Restart Emacs.
 
 
 DEBUGGING
@@ -96,15 +94,19 @@ DEBUGGING
 Here is an illustration on PHP debugging.
 
 1. Run Emacs.
+
 2. Start geben, type: M-x geben
+
 3. Access to the target PHP script page with any browser.
-   You may need to add a query parameter `XDEBUG_SESSION_START'
-   if you configured Xdebug to require manual trigger to start
-   a remote debugging session.
+   You may need to add a query parameter `XDEBUG_SESSION_START' if you
+   configured Xdebug to require manual trigger to start a remote
+   debugging session.
    e.g.) http://www.example.com/test.php?XDEBUG_SESSION_START=1
+
 4. Soon the server and GEBEN establish a debugging session
-   connection. Then Emacs loads the script source code of the
-   entry page in a buffer.
+   connection. Then Emacs loads the script source code of the entry
+   page in a buffer.
+
 5. Now the buffer is under the minor-mode 'geben-mode'.
    You can control the debugger with several keys.
 
@@ -122,6 +124,10 @@ Here is an illustration on PHP debugging.
      v       display context variables
      w       where
      q       stop
+
+   When you hit any unbound key of `geben-mode', GEBEN will ask you to
+   edit the original script file. Say yes and GEBEN will attempts to
+   load the script file via `TRAMP'.
 
 6. If you felt you'd debugged enough, it's time to quit GEBEN.
    To quit GEBEN, type: C-u M-x geben

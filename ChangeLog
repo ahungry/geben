@@ -1,3 +1,8 @@
+2009-01-08  reedom  <fujinaka.tohru@gmail.com>
+
+        * [CHG] Redesigned.
+        * [CHG] Make not to require an external DBGp client program.
+        
 2008-11-06  reedom  <fujinaka.tohru@gmail.com>
 
         * [FIX] When setting breakpoint which needed fileuri against
