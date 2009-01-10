@@ -1,3 +1,9 @@
+Version 0.21 (2009-01-10)
+
+  * fixed: Implemented `geben-quit-window'.
+  * fixed: Type mismatch error was occurred in breakpoint list mode
+                when any breakpoint deletion was executed.
+
 Version 0.20 (2009-01-08)
 
   Redesigned. 

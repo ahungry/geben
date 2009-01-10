@@ -1,3 +1,9 @@
+2009-01-10  reedom  <fujinaka.tohru@gmail.com>
+
+        * [FIX] Implemented `geben-quit-window'
+        * [FIX] Type mismatch error was occurred in breakpoint list mode
+                when any breakpoint deletion was executed.
+        
 2009-01-08  reedom  <fujinaka.tohru@gmail.com>
 
         * [CHG] Redesigned.
