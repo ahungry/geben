@@ -8,9 +8,9 @@ RM      = rm -f
 INSTALL = install
 
 .el.elc:
-	$(EMACS) -Q --batch --eval '(byte-compile-file "$<")'
+	$(EMACS) -Q --batch --eval "(add-to-list 'load-path \".\")" --eval '(byte-compile-file "$<")'
 
-SRCS    = geben.el
+SRCS    = dbgp.el geben.el
 OBJS    = $(SRCS:%.el=%.elc)
 IMGDIR  = tree-widget/geben
 IMGS    = $(wildcard $(IMGDIR)/*.png)
