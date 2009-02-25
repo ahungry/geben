@@ -7,6 +7,8 @@ Version 0.23 (2009-02-25)
 
   * fixed: Now GEBEN works With HTTP server running on Windows unlike
            before.
+  * fixed: Now `eval' command works against PHP(Xdebug) same as
+           before.
 
 Version 0.22 (2009-01-22)
 

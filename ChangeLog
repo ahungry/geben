@@ -2,7 +2,9 @@
         
         * [FIX] With HTTP server running on Windows GEBEN failed to
                 create script file copies.
-
+        * [FIX] Now `eval' command works against PHP(Xdebug) same as
+                before.
+        
 2009-02-07  reedom  <fujinaka.tohru@gmail.com>
 
         * [FIX] Suppressed unwanted focus changing: when the context

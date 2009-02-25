@@ -733,6 +733,7 @@ Return a cmd list."
 (defun geben-dbgp-command-eval (session exp)
   "Send \`eval\' command."
   (geben-dbgp-send-command
+   session
    "eval"
    (format "-- {%s}" (base64-encode-string exp))))
 
