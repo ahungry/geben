@@ -4,7 +4,7 @@
 ;; Filename: geben.el
 ;; Author: reedom <fujinaka.tohru@gmail.com>
 ;; Maintainer: reedom <fujinaka.tohru@gmail.com>
-;; Version: 0.22
+;; Version: 0.23
 ;; URL: http://code.google.com/p/geben-on-emacs/
 ;; Keywords: DBGp, debugger, PHP, Xdebug, Perl, Python, Ruby, Tcl, Komodo
 ;; Compatibility: Emacs 22.1
@@ -391,9 +391,6 @@ Each function is invoked with one argument, SESSION"
 
 (defsubst geben-session-init (session init-msg)
   "Initialize a session of a process PROC."
-  (let ((buf (process-buffer (geben-session-process session))))
-    (and buf
-	 (pop-to-buffer buf)))
   (geben-session-tempdir-setup session)
   (setf (geben-session-initmsg session) init-msg)
   (setf (geben-session-xdebug-p session)
@@ -858,17 +855,17 @@ A source object forms a property list with three properties
   "Generate path string from FILEURI to store temporarily."
   (let ((local-path (geben-source-local-path-in-server session fileuri)))
     (when local-path
-      (expand-file-name (substring local-path 1)
+      (expand-file-name (substring local-path (if (string-match "^[A-Z]:" local-path) 3 1))
 			(geben-session-tempdir session)))))
 
 (defun geben-source-local-path-in-server (session fileuri)
   "Make a path string correspond to FILEURI."
   (when (string-match "^\\(file\\|https?\\):/+" fileuri)
     (let ((path (substring fileuri (1- (match-end 0)))))
-      (setq path (or (and (eq system-type 'windows-nt)
-			  (require 'url-util)
-			  (url-unhex-string path))
-		     path))
+      (require 'url-util)
+      (setq path (url-unhex-string path))
+      (when (string-match "^/[A-Z]:" path) ;; for HTTP server on Windows
+	(setq path (substring path 1)))
       (if (string= "" (file-name-nondirectory path))
 	  (expand-file-name (geben-source-default-file-name session)
 			    path)
@@ -1023,7 +1020,7 @@ FILEURI is a uri of the target file of a debuggee site."
   (let* ((proc (geben-session-process session))
 	 (listener (dbgp-listener-get proc))
 	 (ip (format-network-address (dbgp-ip-get proc) t))
-	 (local-path (replace-regexp-in-string "^file:/*" "/" fileuri))
+	 (local-path (geben-source-local-path-in-server session fileuri))
 	 target-path)
     (if (or (equal ip "127.0.0.1")
 	    (and (fboundp 'network-interface-list)
@@ -2039,7 +2036,8 @@ the file."
 	    (list :type type
 		  :type-visiblep nil
 		  :name-formatter 'geben-context-property-format-array-name
-		  :value-face 'default))
+		  :value-face 'default
+		  :value-formatter (lambda (value) "")))
 	   ((eq type 'null)
 	    (list :type type
 		  :type-visiblep nil
@@ -2266,9 +2264,9 @@ After fetching it calls CALLBACK function."
   (when (and (geben-session-active-p session)
 	     (or force
 		 (geben-session-context-buffer-visible-p session)))
-    (geben-context-list-display session depth)))
+    (geben-context-list-display session depth (not force))))
   
-(defun geben-context-list-display (session depth)
+(defun geben-context-list-display (session depth &optional no-select)
   "Display context variables in the context buffer."
   (unless (geben-session-active-p session)
     (error "GEBEN is out of debugging session."))
@@ -2281,11 +2279,13 @@ After fetching it calls CALLBACK function."
 	(setq geben-context-where
 	      (xml-get-attribute (nth depth (geben-session-stack session))
 				 'where)))
-    (geben-dbgp-display-window buf)
+    (unless no-select
+      (geben-dbgp-display-window buf))
     (geben-context-list-fetch session
-			      (geben-lexical-bind (buf)
+			      (geben-lexical-bind (buf no-select)
 				(lambda (session)
 				  (and (buffer-live-p buf)
+				       (not no-select)
 				       (geben-dbgp-display-window buf)))))))
 
 ;;--------------------------------------------------------------

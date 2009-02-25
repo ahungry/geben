@@ -1,4 +1,4 @@
-GEBEN-0.22 (Beta)
+GEBEN-0.23 (Beta)
 -----------------
 
 GEBEN is a software package that interfaces Emacs to DBGp protocol
@@ -25,7 +25,7 @@ REQUIREMENTS
 [server side]
  - DBGp protocol enabled script engine, like:
    - PHP with Xdebug
-   - Python eith Komode Debugger Extension
+   - Python with Komode Debugger Extension
    - etc.
 
 [client side]
@@ -130,7 +130,7 @@ Here is an illustration on PHP debugging.
    load the script file via `TRAMP'.
 
 6. If you felt you'd debugged enough, it's time to quit GEBEN.
-   To quit GEBEN, type: C-u M-x geben
+   To quit GEBEN, type: M-x geben-end
 
 Known Issues
 ------------
@@ -151,6 +151,10 @@ Known Issues
 
   - Xdebug unexpectedly breaks on returning from class/instance method
     if there is a `call' type breakpoint to the method.
+
+  - If Xdebug is not loaded not as `zend_extension', some feature do
+    not work as expectedly (e.g. step_into).
+    
 
 SUPPORT
 -------

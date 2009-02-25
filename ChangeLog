@@ -1,3 +1,15 @@
+2009-02-25  reedom  <fujinaka.tohru@gmail.com>
+        
+        * [FIX] With HTTP server running on Windows GEBEN failed to
+                create script file copies.
+
+2009-02-07  reedom  <fujinaka.tohru@gmail.com>
+
+        * [FIX] Suppressed unwanted focus changing: when the context
+                variable buffer was visible in any window, the focus was
+                moved from the debugging buffer to the context variable
+                buffer after proceeding any continuous command.
+
 2009-01-22  reedom  <fujinaka.tohru@gmail.com>
 
         * [FIX] Bug in Makefile: cannot byte-compile geben.el if the
