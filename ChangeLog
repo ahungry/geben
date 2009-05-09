@@ -1,5 +1,6 @@
 2009-05-09  reedom  <fujinaka.tohru@gmail.com>
 
+        * [ADD] New command `geben-run-to-cursor', bound to 'c' in geben-mode.
         * [FIX] With Komodo's Perl Debugging Extension, GEBEN possibly caused
                 an internal error when user attempted to set a lineno breakpoint
                 at a blank line.
@@ -7,7 +8,7 @@
 2009-05-08  reedom  <fujinaka.tohru@gmail.com>
 
         * [ADD] New variable `geben-version'.
-        * [ADD] New command `geben-clear-breakpoints'.
+        * [ADD] New command `geben-clear-breakpoints', bound to 'U' in geben-mode.
         * [ADD] New custom variable `geben-query-on-clear-breakpoints'.
         * [ADD] New custom variable `geben-pause-at-entry-line'.
         * [ADD] New command `geben-toggle-pause-at-entry-line-flag'.

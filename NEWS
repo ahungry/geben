@@ -1,7 +1,8 @@
 Version 0.24 (2009-05-09)
 
   * new commands added:
-    - geben-clear-breakpoints
+    - geben-clear-breakpoints; bound to 'U' in geben-mode.
+    - geben-run-to-cursor; bound to 'c' in geben-mode.
   * new custom variables added:
     - geben-query-on-clear-breakpoints
   * new variables added:

@@ -115,6 +115,7 @@ Here is an illustration on PHP debugging.
      o       step over
      r       step out
      g       run
+     c       run to cursor
      b       set a breakpoint at a line
      B       set a breakpoint interactively
      u       unset a breakpoint at a line
