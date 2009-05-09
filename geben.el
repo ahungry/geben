@@ -4,7 +4,7 @@
 ;; Filename: geben.el
 ;; Author: reedom <fujinaka.tohru@gmail.com>
 ;; Maintainer: reedom <fujinaka.tohru@gmail.com>
-;; Version: 0.23
+;; Version: 0.24
 ;; URL: http://code.google.com/p/geben-on-emacs/
 ;; Keywords: DBGp, debugger, PHP, Xdebug, Perl, Python, Ruby, Tcl, Komodo
 ;; Compatibility: Emacs 22.1
@@ -73,6 +73,8 @@
   (require 'xml)
   (require 'tree-widget)
   (require 'dbgp))
+
+(defvar geben-version "0.24")
 
 ;;--------------------------------------------------------------
 ;; customization
@@ -355,6 +357,13 @@ Each function is invoked with one argument, SESSION"
   "*Hook running at when the geben debugging session is finished."
   :group 'geben
   :type 'hook)
+
+(defcustom geben-pause-at-entry-line t
+  "*Specify whether debuggee script should be paused at the entry line.
+If the value is t, GEBEN will automatically pause the starting program
+at the entry line of the script."
+  :group 'geben
+  :type 'boolean)
 
 (defstruct (geben-session
 	    (:constructor nil)
@@ -1244,7 +1253,7 @@ debugging is finished."
   (let* ((storage (geben-session-storage session))
 	 (list (plist-get storage :bp)))
     (when (find bp list :test #'geben-bp=)
-      (delete* bp list :test #'geben-bp=))))
+      (plist-put storage :bp (delete* bp list :test #'geben-bp=)))))
 
 (defun geben-session-breakpoint-storage-restore (session)
   (let ((storage (geben-session-storage session))
@@ -1316,6 +1325,39 @@ id-or-obj should be either a breakpoint id or a breakpoint object."
 	(geben-dbgp-command-breakpoint-set session bp)
 	(lambda (session cmd msg err)
 	  (geben-bp-finalize bp))))))
+
+(defun geben-breakpoint-remove (session bp-or-list)
+  "Remove specified breakpoints."
+  (dolist (bp (if (geben-breakpoint-p bp-or-list)
+		  (list bp-or-list)
+		bp-or-list))
+    (let ((bid (plist-get bp :id)))
+      (if (and (geben-session-active-p session)
+	       bid)
+	  (geben-dbgp-sequence-bind (bid)
+	    (geben-dbgp-send-command session "breakpoint_remove" (cons "-d" bid))
+	    (lambda (session cmd msg err)
+	      ;; remove a stray breakpoint from hash table.
+	      (when err
+		(geben-session-breakpoint-remove session bid))))
+	(setf (geben-breakpoint-list (geben-session-breakpoint session))
+	      (delete-if (lambda (bp1)
+			   (geben-bp= bp bp1))
+			 (geben-breakpoint-list (geben-session-breakpoint session))))))))
+
+(defun geben-breakpoint-clear (session)
+  "Clear all breakpoints."
+  (geben-breakpoint-remove session
+			   (geben-breakpoint-list (geben-session-breakpoint session))))
+
+(defun geben-breakpoint-find-at-pos (session buf pos)
+  (with-current-buffer buf
+    (remove-if 'null
+	       (mapcar (lambda (overlay)
+			 (let ((bp (overlay-get overlay 'bp)))
+			   (and (eq :line (plist-get bp :type))
+				bp)))
+		       (overlays-at pos)))))
 
 ;; breakpoint list
 
@@ -1459,20 +1501,7 @@ The buffer commands are:
 	  (let ((buffer-read-only nil))
 	    (while (re-search-forward "^D" nil t)
 	      (add-to-list 'candidates (get-text-property (point) 'geben-bp)))))
-	(dolist (bp candidates)
-	  (let ((bid (plist-get bp :id)))
-	    (if (and (geben-session-active-p session)
-		     bid)
-		(geben-dbgp-sequence-bind (bid)
-		  (geben-dbgp-send-command session "breakpoint_remove" (cons "-d" bid))
-		  (lambda (session cmd msg err)
-		    ;; remove a stray breakpoint from hash table.
-		    (when err
-		      (geben-session-breakpoint-remove session bid))))
-	      (setf (geben-breakpoint-list (geben-session-breakpoint session))
-		    (delete-if (lambda (bp1)
-				 (geben-bp= bp bp1))
-			       (geben-breakpoint-list (geben-session-breakpoint session)))))))
+	(geben-breakpoint-remove session candidates)
 	(when candidates
 	  (geben-breakpoint-list-display session))))))
 
@@ -1529,7 +1558,8 @@ Key mapping and other information is described its help page."
 	(unless bp
 	  (let* ((type (intern-soft (concat ":" (xml-get-attribute msg-bp 'type))))
 		 (fileuri (xml-get-attribute-or-nil msg-bp 'filename))
-		 (lineno (xml-get-attribute-or-nil msg-bp 'lineno))
+		 (lineno (or (xml-get-attribute-or-nil msg-bp 'lineno)
+			     (xml-get-attribute-or-nil msg-bp 'line)))
 		 (function (xml-get-attribute-or-nil msg-bp 'function))
 		 (class (xml-get-attribute-or-nil msg-bp 'class))
 		 (method function)
@@ -2532,7 +2562,7 @@ The buffer commands are:
 	(setf (geben-session-stack session) (xml-get-children msg 'stack))
 	(let* ((stack (car (xml-get-children msg 'stack)))
 	       (fileuri (xml-get-attribute-or-nil stack 'filename))
-	       (lineno (xml-get-attribute-or-nil stack'lineno)))
+	       (lineno (xml-get-attribute-or-nil stack 'lineno)))
 	  (and fileuri lineno
 	       (geben-session-cursor-update session fileuri lineno)))
 	(run-hook-with-args 'geben-dbgp-stack-update-hook
@@ -2802,16 +2832,19 @@ and call `geben-dbgp-entry' with each chunk."
     (when fileuri
       (geben-dbgp-command-source session fileuri))))
 
-(defun geben-dbgp-init-proceed-to-first-line (session)
+(defun geben-dbgp-first-continuous-command (session)
   ""
   (geben-dbgp-sequence
       (geben-dbgp-send-command session "status")
     (lambda (session cmd msg err)
       (unless err
-	(if (equal "break" (xml-get-attribute msg 'status))
+	(if (not geben-pause-at-entry-line)
+	    (geben-dbgp-command-run session)
+	  (if (and (equal "break" (xml-get-attribute msg 'status))
+		   (not (member (geben-session-language session) '(:perl))))
 	    ;; it is nonconforming to DBGp specs; anyway manage it.
-	    (run-hook-with-args 'geben-dbgp-continuous-command-hook session)
-	  (geben-dbgp-command-step-into session))))))
+	      (run-hook-with-args 'geben-dbgp-continuous-command-hook session)
+	    (geben-dbgp-command-step-into session)))))))
 
 ;; features
 
@@ -2893,12 +2926,12 @@ of the function is passed to feature_set DBGp command."
 			   (cons "-n" feature)
 			   (cons "-v" (format "%S" (eval value)))))
 
-(add-hook 'geben-dbgp-init-hook #'geben-dbgp-init-fetch-entry-source t)
+;(add-hook 'geben-dbgp-init-hook #'geben-dbgp-init-fetch-entry-source t)
 (add-hook 'geben-dbgp-init-hook #'geben-dbgp-feature-init t)
 (add-hook 'geben-dbgp-init-hook #'geben-dbgp-redirect-init t)
 (add-hook 'geben-dbgp-init-hook #'geben-dbgp-command-context-names t)
 (add-hook 'geben-dbgp-init-hook #'geben-dbgp-breakpoint-restore t)
-(add-hook 'geben-dbgp-init-hook #'geben-dbgp-init-proceed-to-first-line t)
+(add-hook 'geben-dbgp-init-hook #'geben-dbgp-first-continuous-command t)
 
 (add-hook 'geben-dbgp-continuous-command-hook #'geben-dbgp-stack-update)
 (add-hook 'geben-dbgp-continuous-command-hook #'geben-dbgp-breakpoint-list-refresh)
@@ -2909,6 +2942,12 @@ of the function is passed to feature_set DBGp command."
 ;;  geben-mode
 ;;==============================================================
 
+(defcustom geben-query-on-clear-breakpoints t
+  "*Specify if query is needed before removing all breakpoints.
+If non-nil, GEBEN will query the user before removing all breakpoints."
+  :group 'geben
+  :type 'boolean)
+
 (defvar geben-mode-map nil)
 (unless geben-mode-map
   (setq geben-mode-map (make-sparse-keymap "geben"))
@@ -2916,9 +2955,9 @@ of the function is passed to feature_set DBGp command."
   (define-key geben-mode-map " " 'geben-step-again)
   (define-key geben-mode-map "g" 'geben-run)
   ;;(define-key geben-mode-map "G" 'geben-Go-nonstop-mode)
-  (define-key geben-mode-map "t" 'geben-set-redirect)
+  (define-key geben-mode-map ">" 'geben-set-redirect)
   ;;(define-key geben-mode-map "T" 'geben-Trace-fast-mode)
-  ;;(define-key geben-mode-map "c" 'geben-continue-mode)
+  ;;(define-key geben-mode-map "c" 'geben-run-to-cursor)
   ;;(define-key geben-mode-map "C" 'geben-Continue-fast-mode)
 
   ;;(define-key geben-mode-map "f" 'geben-forward) not implemented
@@ -2940,6 +2979,7 @@ of the function is passed to feature_set DBGp command."
   (define-key geben-mode-map "b" 'geben-set-breakpoint-line)
   (define-key geben-mode-map "B" 'geben-breakpoint-menu)
   (define-key geben-mode-map "u" 'geben-unset-breakpoint-line)
+  (define-key geben-mode-map "U" 'geben-clear-breakpoints)
   (define-key geben-mode-map "\C-cb" 'geben-show-breakpoint-list)
   ;;(define-key geben-mode-map "B" 'geben-next-breakpoint)
   ;;(define-key geben-mode-map "x" 'geben-set-conditional-breakpoint)
@@ -2947,8 +2987,8 @@ of the function is passed to feature_set DBGp command."
 
   ;; evaluation
   (define-key geben-mode-map "e" 'geben-eval-expression)
+  ;;(define-key geben-mode-map "E" 'geben-eval-current-word)
   ;;(define-key geben-mode-map "\C-x\C-e" 'geben-eval-last-sexp)
-  ;;(define-key geben-mode-map "E" 'geben-visit-eval-list)
 
   ;; views
   (define-key geben-mode-map "w" 'geben-where)
@@ -2960,6 +3000,8 @@ of the function is passed to feature_set DBGp command."
   ;; misc
   (define-key geben-mode-map "?" 'geben-mode-help)
   (define-key geben-mode-map "d" 'geben-show-backtrace)
+  (define-key geben-mode-map "t" 'geben-show-backtrace)
+  (define-key geben-mode-map "\C-cp" 'geben-toggle-pause-at-entry-line-flag)
 
   ;;(define-key geben-mode-map "-" 'negative-argument)
 
@@ -3082,6 +3124,12 @@ It will break at next breakpoint, or stops at the end of the script."
   (interactive)
   (geben-with-current-session session
     (geben-dbgp-command-run session)))
+
+;; (defun geben-run-to-cursor ()
+;;   "Run the script to where the cursor points."
+;;   (interactive)
+;;   (geben-with-current-session session
+;;     nil))
 
 (defun geben-stop ()
   "End execution of the script immediately."
@@ -3317,27 +3365,24 @@ hit-value interactively."
 				 (geben-bp-make session :watch
 						:expression expr))))
 
-(defun geben-unset-breakpoint-line (fileuri path lineno)
+(defun geben-unset-breakpoint-line ()
   "Clear a breakpoint set at the current line."
-  (interactive (list nil nil nil))
+  (interactive)
   (geben-with-current-session session
-    (when (interactive-p)
-      (setq path (buffer-file-name (current-buffer)))
-      (when (stringp path)
-	(setq lineno (and (get-file-buffer path)
-			  (with-current-buffer (get-file-buffer path)
-			    (geben-what-line))))
-	(setq fileuri (or (geben-session-source-fileuri session path)
-			  (geben-source-fileuri session path)
-			  (concat "file://" (file-truename path))))))
-    (let* ((bp (find-if (lambda (bp)
-			  (and (eq :line (plist-get bp :type))
-			       (eq lineno (plist-get bp :lineno))
-			       (equal fileuri (plist-get bp :fileuri))))
-			(geben-breakpoint-list (geben-session-breakpoint session))))
-	   (bid (and bp (plist-get bp :id))))
-      (if bid
-	  (geben-dbgp-command-breakpoint-remove session bid)))))
+    (mapc (lambda (bp)
+	    (geben-dbgp-command-breakpoint-remove session (plist-get bp :id)))
+	  (geben-breakpoint-find-at-pos session (current-buffer) (point)))))
+
+(defun geben-clear-breakpoints ()
+  "Clear all breakpoints.
+If `geben-query-on-clear-breakpoints' is non-nil, GEBEN will query the user before
+removing all breakpoints."
+  (interactive)
+  (geben-with-current-session session
+    (when (or (not geben-query-on-clear-breakpoints)
+	      (let ((prompt "Clear all breakpoints? (y/N): "))
+		(memq (read-char prompt) '(?Y ?y))))
+      (geben-breakpoint-clear session))))
 
 (defun geben-show-breakpoint-list ()
   "Display breakpoint list.
@@ -3357,6 +3402,14 @@ Key mapping and other information is described its help page."
   (geben-with-current-session session
     (geben-dbgp-command-eval session expr)))
 
+(defun geben-eval-current-word ()
+  "Evaluate a word at where the cursor is pointing."
+  (interactive)
+  (let ((expr (current-word)))
+    (when expr
+      (geben-with-current-session session
+	(geben-dbgp-command-eval session expr)))))
+
 (defun geben-open-file (fileuri)
   "Open a debugger server side file specified by FILEURI.
 FILEURI forms like as \`file:///path/to/file\'."
@@ -3371,6 +3424,14 @@ Key mapping and other information is described its help page."
   (interactive)
   (geben-with-current-session session
     (geben-backtrace session)))
+
+(defun geben-toggle-pause-at-entry-line-flag ()
+  "Toggle `geben-pause-at-entry-line'."
+  (interactive)
+  (setq geben-pause-at-entry-line
+	(not geben-pause-at-entry-line))
+  (if (interactive-p)
+      (message (format "`geben-pause-at-entry-line' is %s" geben-pause-at-entry-line))))
 
 (defun geben-set-redirect (target &optional arg)
   "Set the debuggee script's output redirection mode.

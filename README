@@ -1,4 +1,4 @@
-GEBEN-0.23 (Beta)
+GEBEN-0.24 (Beta)
 -----------------
 
 GEBEN is a software package that interfaces Emacs to DBGp protocol
@@ -118,9 +118,12 @@ Here is an illustration on PHP debugging.
      b       set a breakpoint at a line
      B       set a breakpoint interactively
      u       unset a breakpoint at a line
+     U       clear all breakpoints
      \C-b    display breakpoint list
-     t       set redirection mode
+     >       set redirection mode
      \C-u t  change redirection mode
+     d       display backtrace
+     t       display backtrace
      v       display context variables
      w       where
      q       stop

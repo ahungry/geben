@@ -4,7 +4,7 @@
 ;; Filename: dbgp.el
 ;; Author: reedom <fujinaka.tohru@gmail.com>
 ;; Maintainer: reedom <fujinaka.tohru@gmail.com>
-;; Version: 0.23
+;; Version: 0.24
 ;; URL: http://code.google.com/p/geben-on-emacs/
 ;; Keywords: DBGp, debugger, PHP, Xdebug, Perl, Python, Ruby, Tcl, Komodo
 ;; Compatibility: Emacs 22.1
@@ -122,12 +122,11 @@ to connect to DBGp listener of this address."
    (xml-get-children xml 'error)))
 
 (defsubst dbgp-xml-get-error-message (xml)
-  (car
-   (xml-node-children
-    (car
-     (xml-node-children
-      (car
-       (xml-get-children xml 'error)))))))
+  (let ((err (dbgp-xml-get-error-node xml)))
+    (if (stringp (car err))
+	(car err)
+      (car (xml-node-children
+	    (car (xml-get-children err 'message)))))))
 
 (defsubst dbgp-make-listner-name (port)
   (format "DBGp listener<%d>" port))

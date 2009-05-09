@@ -1,3 +1,25 @@
+2009-05-09  reedom  <fujinaka.tohru@gmail.com>
+
+        * [FIX] With Komodo's Perl Debugging Extension, GEBEN possibly caused
+                an internal error when user attempted to set a lineno breakpoint
+                at a blank line.
+
+2009-05-08  reedom  <fujinaka.tohru@gmail.com>
+
+        * [ADD] New variable `geben-version'.
+        * [ADD] New command `geben-clear-breakpoints'.
+        * [ADD] New custom variable `geben-query-on-clear-breakpoints'.
+        * [ADD] New custom variable `geben-pause-at-entry-line'.
+        * [ADD] New command `geben-toggle-pause-at-entry-line-flag'.
+        * [CHG] Key bindings of `geben-set-redirect' is assigned to `>'.
+        * [CHG] Key bindings of `geben-show-backtrace is also assigned to `t'.
+        * [FIX] Even if you unset a breakpoint successfully in the current
+                session, it was not removed from the persist storage.
+
+2009-04-30  reedom  <fujinaka.tohru@gmail.com>
+
+        * [ADD] Add a new command `geben-eval-current-word'.
+
 2009-02-25  reedom  <fujinaka.tohru@gmail.com>
         
         * [FIX] With HTTP server running on Windows GEBEN failed to
