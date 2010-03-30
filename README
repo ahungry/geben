@@ -126,6 +126,7 @@ Here is an illustration on PHP debugging.
      d       display backtrace
      t       display backtrace
      v       display context variables
+     \C-c f  visit script file
      w       where
      q       stop
 
