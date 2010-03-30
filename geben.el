@@ -4,7 +4,7 @@
 ;; Filename: geben.el
 ;; Author: reedom <fujinaka.tohru@gmail.com>
 ;; Maintainer: reedom <fujinaka.tohru@gmail.com>
-;; Version: 0.24
+;; Version: 0.26
 ;; URL: http://code.google.com/p/geben-on-emacs/
 ;; Keywords: DBGp, debugger, PHP, Xdebug, Perl, Python, Ruby, Tcl, Komodo
 ;; Compatibility: Emacs 22.1
@@ -238,6 +238,14 @@ If POS is omitted, then the current position is used."
 		    (geben-remove-directory-tree path))))))
 	  (directory-files basedir t nil t))
     (delete-directory basedir)))
+
+(defun geben-remote-p (ip)
+  "Test whether IP refers a remote system."
+  (not (or (equal ip "127.0.0.1")
+	   (and (fboundp 'network-interface-list)
+		(member ip (mapcar (lambda (addr)
+				     (format-network-address (cdr addr) t))
+				   (network-interface-list)))))))
   
 ;;--------------------------------------------------------------
 ;;  cross emacs overlay definitions
@@ -519,6 +527,18 @@ at the entry line of the script."
   (let ((tempdir (geben-session-tempdir session)))
     (when (file-directory-p tempdir)
       (geben-remove-directory-tree tempdir))))
+
+;; misc
+
+(defsubst geben-session-ip-get (session)
+  "Get ip address of the host server."
+  (let* ((proc (geben-session-process session))
+	 (listener (dbgp-listener-get proc)))
+    (format-network-address (dbgp-ip-get proc) t)))
+
+(defun geben-session-remote-p (session)
+  "Get ip address of the host server."
+  (geben-remote-p (geben-session-ip-get session)))
 
 
 ;;==============================================================
@@ -852,14 +872,22 @@ A source object forms a property list with three properties
 (defun geben-source-fileuri (session local-path)
   "Guess a file uri string which counters to LOCAL-PATH."
   (let* ((tempdir (geben-session-tempdir session))
-	 (templen (length tempdir)))
+	 (templen (length tempdir))
+	 (tramp-spec (plist-get (geben-session-storage session) :tramp))
+	 (tramp-spec-len (and tramp-spec (length tramp-spec))))
     (concat "file://"
-	    (if (and (< templen (length local-path))
-		     (string= tempdir (substring local-path 0 templen)))
-		(substring local-path
-			   (- templen
-			      (if (string< "" (file-name-nondirectory tempdir)) 0 1)))
-	      local-path))))
+	    (cond
+	     ((and (< templen (length local-path))
+		   (string= tempdir (substring local-path 0 templen)))
+	      (substring local-path
+			 (- templen
+			    (if (string< "" (file-name-nondirectory tempdir)) 0 1))))
+	     ((and tramp-spec
+		   (< tramp-spec-len (length local-path))
+		   (string= tramp-spec (substring local-path 0 tramp-spec-len)))
+	      (substring local-path tramp-spec-len))
+	     (t
+	      local-path)))))
 
 (defun geben-source-local-path (session fileuri)
   "Generate path string from FILEURI to store temporarily."
@@ -868,7 +896,7 @@ A source object forms a property list with three properties
       (expand-file-name (substring local-path (if (string-match "^[A-Z]:" local-path) 3 1))
 			(geben-session-tempdir session)))))
 
-(defun geben-source-local-path-in-server (session fileuri)
+(defun geben-source-local-path-in-server (session fileuri &optional disable-completion)
   "Make a path string correspond to FILEURI."
   (when (string-match "^\\(file\\|https?\\):/+" fileuri)
     (let ((path (substring fileuri (1- (match-end 0)))))
@@ -876,7 +904,8 @@ A source object forms a property list with three properties
       (setq path (url-unhex-string path))
       (when (string-match "^/[A-Z]:" path) ;; for HTTP server on Windows
 	(setq path (substring path 1)))
-      (if (string= "" (file-name-nondirectory path))
+      (if (and (not disable-completion)
+	       (string= "" (file-name-nondirectory path)))
 	  (expand-file-name (geben-source-default-file-name session)
 			    path)
 	path))))
@@ -1026,40 +1055,63 @@ FILEURI is a uri of the target file of a debuggee site."
   :group 'geben
   :type 'function)
 
-(defun geben-session-source-visit-original-file (session fileuri)
-  (let* ((proc (geben-session-process session))
-	 (listener (dbgp-listener-get proc))
-	 (ip (format-network-address (dbgp-ip-get proc) t))
-	 (local-path (geben-source-local-path-in-server session fileuri))
-	 target-path)
-    (if (or (equal ip "127.0.0.1")
-	    (and (fboundp 'network-interface-list)
-		 (member ip (mapcar (lambda (addr)
-				      (format-network-address (cdr addr) t))
-				    (network-interface-list)))))
-	;; local file
-	(setq target-path local-path)
-      ;; remote file
-      (condition-case nil
-	  (if (fboundp 'geben-visit-remote-file)
-	      (funcall geben-visit-remote-file session fileuri)
-	    (let* ((storage (geben-session-storage session))
-		   (path-prefix (plist-get storage :tramp))
-		   (find-file-default (if path-prefix
-					  (concat path-prefix local-path)
-					(format "/%s:%s" ip local-path))))
-	      (setq target-path (read-file-name "Find remote file: "
-						(file-name-directory find-file-default)
-						find-file-default t
-						(file-name-nondirectory find-file-default)))
-	      (require 'tramp)
-	      (when (tramp-tramp-file-p target-path)
-		(plist-put storage :tramp (replace-regexp-in-string ":[^:]+$" ":" target-path)))))
-	(quit (beep))))
+(defcustom geben-get-tramp-spec-for nil
+  "Function to retrieve TRAMP spec for a file path of a remove server.
+This function is called when visiting a remote server file, with
+a parameter `remote-path'. (e.g. \"/192.168.1.32:/var/www/index.php\")
+If `remote-path' is unknown to the function, it should return nil.
+Or return specific TRAMP spec. (e.g. \"/user@example.com:\""
+  :group 'geben
+  :type 'function)
+
+(defun geben-session-source-visit-original-file (session fileuri &optional disable-completion)
+  (let ((target-path (geben-session-source-read-file-name session fileuri disable-completion)))
     (and target-path
-	 (find-file target-path)
-	 (message "visited: %s" target-path))))
-  
+	 (prog1
+	     (find-file target-path)
+	   (message "visited: %s" target-path)))))
+
+(defun geben-session-source-read-file-name (session fileuri &optional disable-completion)
+  (if (geben-session-remote-p session)
+      (geben-session-source-read-file-name-remote session fileuri disable-completion)
+    (geben-session-source-read-file-name-local session fileuri disable-completion)))
+
+(defun geben-session-source-read-file-name-local (session fileuri &optional disable-completion)
+  (let ((local-path (geben-source-local-path-in-server session fileuri disable-completion)))
+    ;; local file
+    (unless (file-regular-p local-path)
+      (while (not (file-regular-p (setq local-path
+					(read-file-name "Find local file: "
+							local-path local-path t ""))))
+	(beep)))
+    (expand-file-name local-path)))
+
+(defun geben-session-source-read-file-name-remote (session fileuri &optional disable-completion)
+  (condition-case nil
+      (if (fboundp 'geben-visit-remote-file)
+	  (funcall geben-visit-remote-file session fileuri)
+	(let* ((ip (geben-session-ip-get session))
+	       (local-path (geben-source-local-path-in-server session fileuri disable-completion))
+	       (storage (geben-session-storage session))
+	       (path-prefix (or (plist-get storage :tramp)
+				(and (fboundp 'geben-get-tramp-spec-for)
+				     (funcall 'geben-get-tramp-spec-for
+					      (format "/%s:%s" ip local-path)))))
+	       (find-file-default (if path-prefix
+				      (concat path-prefix local-path)
+				    (format "/%s:%s" ip local-path))))
+	  (while (not (tramp-handle-file-regular-p 
+		       (setq find-file-default (read-file-name "Find remote file: "
+							       (file-name-directory find-file-default)
+							       find-file-default t
+							       (file-name-nondirectory find-file-default)))))
+	    (beep))
+	  (require 'tramp)
+	  (when (tramp-tramp-file-p find-file-default)
+	    (plist-put storage :tramp (replace-regexp-in-string ":[^:]+$" ":" find-file-default)))
+	  find-file-default))
+    (quit (beep))))
+
 
 ;;==============================================================
 ;; cursor
@@ -2727,11 +2779,12 @@ The buffer commands are:
 		nil 3))))
 
 (defun geben-dbgp-start-proxy (ip-or-addr port idekey ;;multi-session-p
-					  )
+					  session-port)
   "Create DBGp listeners at each CONNECTION-POINTS."
   (condition-case error-sexp
       (let* ((result
 	      (dbgp-proxy-register-exec ip-or-addr port idekey nil ;; multi-session-p
+					session-port
 					:session-accept 'geben-dbgp-session-accept-p
 					:session-init 'geben-dbgp-session-init
 					:session-filter 'geben-dbgp-session-filter
@@ -3002,6 +3055,7 @@ If non-nil, GEBEN will query the user before removing all breakpoints."
   (define-key geben-mode-map "d" 'geben-show-backtrace)
   (define-key geben-mode-map "t" 'geben-show-backtrace)
   (define-key geben-mode-map "\C-cp" 'geben-toggle-pause-at-entry-line-flag)
+  (define-key geben-mode-map "\C-cf" 'geben-find-file)
 
   ;;(define-key geben-mode-map "-" 'negative-argument)
 
@@ -3481,14 +3535,32 @@ from \`redirect', \`intercept' and \`disabled'."
   (geben-with-current-session session
     (geben-context-list-display session (or depth 0))))
 
+(defun geben-find-file ()
+  (interactive)
+    (geben-with-current-session session
+      (let ((file-path (geben-session-source-read-file-name
+			session
+			(file-name-directory (geben-source-fileuri session
+								   (buffer-file-name)))
+			t)))
+	(when file-path
+	  (geben-open-file (geben-source-fileuri session file-path))))))
+  
 
 (defcustom geben-dbgp-default-port 9000
   "Default port number to listen a new DBGp connection."
   :group 'geben
   :type 'integer)
 
-(defcustom geben-dbgp-default-proxy '("127.0.0.1" 9001 "default" nil)
-  "Default setting for a new DBGp proxy connection."
+(defcustom geben-dbgp-default-proxy '("127.0.0.1" 9001 "default" nil t)
+  "Default setting for a new DBGp proxy connection.
+
+The first and second elements are address and port where the DBGp proxy listening on.
+The third element is IDE key.
+The forth element is a flag but currently not used yet.
+The fifth element is port to be used in debugging sessions. If a non-integer value is
+set, then any free port will be allocated.
+"
   :group 'geben)
 
 ;;;###autoload
@@ -3551,10 +3623,13 @@ described its help page."
 				     (number-to-string (second (process-contact listener)))))
 			      dbgp-listeners))))
      (list
-      ;; ask user for the target idekey.
-      (read (completing-read "Listener port to kill: " ports nil t
-			     (and (eq 1 (length ports))
-				  (car ports)))))))
+      (if (= 1 (length ports))
+	  (string-to-number (car ports))
+	;; ask user for the target idekey.
+	(let ((num (completing-read "Listener port to kill: " ports nil t)))
+	  (if (string< "" num)
+	      (read num)
+	    (signal 'quit nil)))))))
   (let ((listener (dbgp-listener-find port)))
     (dbgp-listener-kill port)
     (and (interactive-p)
@@ -3565,7 +3640,7 @@ described its help page."
     (and listener t)))
 
 (defun geben-proxy (ip-or-addr port idekey ;;multi-session-p
-			       )
+			       &optional session-port)
   "Start a new DBGp proxy listener.
 The DBGp proxy should be found at IP-OR-ADDR / PORT.
 This create a new DBGp listener and register it to the proxy
@@ -3586,9 +3661,18 @@ associating with the IDEKEY."
 				   (nth 2 (default-value 'geben-dbgp-default-proxy)))))
 		  (dbgp-read-string "IDE key: " nil 'dbgp-proxy-idekey-history))
 		;;(not (memq (read-char "Multi session(Y/n): ") '(?N ?n)))
-		))
+		(let ((default (or (car dbgp-proxy-session-port-history)
+				   (nth 4 geben-dbgp-default-proxy)
+				   (nth 4 (default-value 'geben-dbgp-default-proxy)))))
+		  (unless (numberp default)
+		    (setq default 0))
+		  (dbgp-read-integer (format "Port for debug session (%s): "
+					     (if (< 0 default)
+						 (format "default %d, 0 to use any free port" default)
+					       (format "leave empty to use any free port")))
+				     default 'dbgp-proxy-session-port-history))))
   (geben-dbgp-start-proxy ip-or-addr port idekey ;;multi-session-p
-			  ))
+			  session-port))
 
 (defalias 'geben-proxy-end #'dbgp-proxy-unregister)
 

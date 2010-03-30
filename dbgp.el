@@ -4,7 +4,7 @@
 ;; Filename: dbgp.el
 ;; Author: reedom <fujinaka.tohru@gmail.com>
 ;; Maintainer: reedom <fujinaka.tohru@gmail.com>
-;; Version: 0.24
+;; Version: 0.26
 ;; URL: http://code.google.com/p/geben-on-emacs/
 ;; Keywords: DBGp, debugger, PHP, Xdebug, Perl, Python, Ruby, Tcl, Komodo
 ;; Compatibility: Emacs 22.1
@@ -236,6 +236,7 @@ The session process is alive until the session is disconnected.
 (defvar dbgp-proxy-address-history nil)
 (defvar dbgp-proxy-port-history nil)
 (defvar dbgp-proxy-idekey-history nil)
+(defvar dbgp-proxy-session-port-history nil)
 
 ;;--------------------------------------------------------------
 ;; interactive read functions
@@ -281,7 +282,9 @@ See `read-from-minibuffer' for details of HISTORY argument."
 			   (mapcar 'number-to-string
 				   (symbol-value history)))))
     (while
-	(let ((str (read-string prompt nil 'temp-history (number-to-string default))))
+	(let ((str (read-string prompt nil 'temp-history (if (numberp default)
+							     (number-to-string default)
+							   ""))))
 	  (ignore-errors
 	   (setq n (cond
 		    ((numberp str) str)
@@ -392,7 +395,7 @@ See `read-from-minibuffer' for details of HISTORY argument."
 ;;--------------------------------------------------------------
 
 ;;;###autoload
-(defun dbgp-proxy-register (proxy-ip-or-addr proxy-port idekey multi-session-p)
+(defun dbgp-proxy-register (proxy-ip-or-addr proxy-port idekey multi-session-p &optional session-port)
   "Register a new DBGp listener to an external DBGp proxy.
 The proxy should be found at PROXY-IP-OR-ADDR / PROXY-PORT.
 This creates a new DBGp listener and register it to the proxy
@@ -405,8 +408,17 @@ associating with the IDEKEY."
 		  (dbgp-read-integer (format "Proxy port (default %d): " default)
 				     default 'dbgp-proxy-port-history))
 		(dbgp-read-string "IDE key: " nil 'dbgp-proxy-idekey-history)
-		(not (memq (read-char "Multi session(Y/n): ") '(?N ?n)))))
+		(not (memq (read-char "Multi session(Y/n): ") '(?N ?n)))
+		(let ((default (or (car dbgp-proxy-session-port-history) t)))
+		  (unless (numberp default)
+		    (setq default 0))
+		  (dbgp-read-integer (format "Port for debug session (%s): "
+					     (if (< 0 default)
+						 (format "default %d, 0 to use any free port" default)
+					       (format "leave empty to use any free port")))
+				     default 'dbgp-proxy-session-port-history))))
   (let ((result (dbgp-proxy-register-exec proxy-ip-or-addr proxy-port idekey multi-session-p
+					  (if (integerp session-port) session-port t)
 					  :session-accept 'dbgp-default-session-accept-p
 					  :session-init 'dbgp-default-session-init
 					  :session-filter 'dbgp-default-session-filter
@@ -417,7 +429,7 @@ associating with the IDEKEY."
     result))
 
 ;;;###autoload
-(defun dbgp-proxy-register-exec (ip-or-addr port idekey multi-session-p &rest session-params)
+(defun dbgp-proxy-register-exec (ip-or-addr port idekey multi-session-p session-port &rest session-params)
   "Register a new DBGp listener to an external DBGp proxy.
 The proxy should be found at IP-OR-ADDR / PORT.
 This create a new DBGp listener and register it to the proxy
@@ -439,7 +451,9 @@ associating with the IDEKEY."
     ;; send commands to the external proxy instance
     (let* ((listener-proc (make-network-process :name "DBGp proxy listener"
 						:server t
-						:service t
+						:service (if (and (numberp session-port) (< 0 session-port))
+							     session-port
+							   t)
 						:family 'ipv4
 						:noquery t
 						:filter 'dbgp-comint-setup

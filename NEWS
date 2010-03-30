@@ -1,4 +1,20 @@
-Version 0.24 (2009-05-09)
+Version 0.26 (20010-03-29)
+
+  * new command:
+    - `geben-find-file', bound to 'C-c f' in geben-mode.
+  * new custom variable:
+    - `geben-get-tramp-spec-for'.
+  * improved:
+    - If there only single session alive, `geben-end' ends the session
+      without port inquiry.
+
+Version 0.25 (2009-11-19)
+
+  * improved:
+    - to `geben-proxy' now you can specify any fixed port number to
+      which incoming debugging session is bound.
+
+Version 0.24 (2009-05-08)
 
   * new commands added:
     - geben-clear-breakpoints; bound to 'U' in geben-mode.

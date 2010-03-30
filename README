@@ -1,4 +1,4 @@
-GEBEN-0.24 (Beta)
+GEBEN-0.26 (Beta)
 -----------------
 
 GEBEN is a software package that interfaces Emacs to DBGp protocol
@@ -6,7 +6,7 @@ with which you can debug running scripts interactive. At this present
 DBGp protocol are supported in several script languages with help of
 custom extensions.
 
- * PHP with Xdebug
+ * PHP with Xdebug 2.0.*
  * Perl, Python, Ruby and Tcl with Komodo Debugger Extensions
 
 Currently GEBEN implements the following features.
@@ -120,7 +120,7 @@ Here is an illustration on PHP debugging.
      B       set a breakpoint interactively
      u       unset a breakpoint at a line
      U       clear all breakpoints
-     \C-b    display breakpoint list
+     \C-c b  display breakpoint list
      >       set redirection mode
      \C-u t  change redirection mode
      d       display backtrace
@@ -138,6 +138,8 @@ Here is an illustration on PHP debugging.
 
 Known Issues
 ------------
+
+* This version is not tested with Xdebug 2.1.* yet.
 
 * There are some issues related Xdebug, version of at least 2.0.3.
 
@@ -183,5 +185,4 @@ Thank you.
 
 --
 
-FUJINAKA Tohru as thoney, as reedom
-fujinaka.tohru@gmail.com
+reedom <fujinaka.tohru@gmail.com>

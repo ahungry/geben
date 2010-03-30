@@ -1,3 +1,17 @@
+2010-03-29  reedom  <fujinaka.tohru@gmail.com>
+        
+        * [ADD] New command `geben-find-file', bound to 'C-c f' in geben-mode.
+        * [ADD] New custom variable `geben-get-tramp-spec-for'.
+        * [CHG] If there only single session alive, `geben-end' ends the session
+                without port inquiry.
+        
+2009-11-19  reedom  <fujinaka.tohru@gmail.com>
+
+        * [ADD] An additional parameter `session-port' to `geben-proxy', to tell the
+                proxy to use that port for for incoming debugging session.
+        * [ADD] The 5th element to `geben-dbgp-default-proxy',  for the same purpose
+                of above.
+
 2009-05-09  reedom  <fujinaka.tohru@gmail.com>
 
         * [ADD] New command `geben-run-to-cursor', bound to 'c' in geben-mode.
