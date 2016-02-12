@@ -1,244 +1,249 @@
+2016-02-12 Ignacio Torres Masdeu  <i@itorres.net>
+
+	* [FIX] Mangle defadvice that interfered with the use of
+		open-network-stream globaly.
+
 2010-03-29  reedom  <fujinaka.tohru@gmail.com>
-        
-        * [ADD] New command `geben-find-file', bound to 'C-c f' in geben-mode.
-        * [ADD] New custom variable `geben-get-tramp-spec-for'.
-        * [CHG] If there only single session alive, `geben-end' ends the session
-                without port inquiry.
-        
+
+	* [ADD] New command `geben-find-file', bound to 'C-c f' in geben-mode.
+	* [ADD] New custom variable `geben-get-tramp-spec-for'.
+	* [CHG] If there only single session alive, `geben-end' ends the session
+		without port inquiry.
+
 2009-11-19  reedom  <fujinaka.tohru@gmail.com>
 
-        * [ADD] An additional parameter `session-port' to `geben-proxy', to tell the
-                proxy to use that port for for incoming debugging session.
-        * [ADD] The 5th element to `geben-dbgp-default-proxy',  for the same purpose
-                of above.
+	* [ADD] An additional parameter `session-port' to `geben-proxy', to tell the
+		proxy to use that port for for incoming debugging session.
+	* [ADD] The 5th element to `geben-dbgp-default-proxy',  for the same purpose
+		of above.
 
 2009-05-09  reedom  <fujinaka.tohru@gmail.com>
 
-        * [ADD] New command `geben-run-to-cursor', bound to 'c' in geben-mode.
-        * [FIX] With Komodo's Perl Debugging Extension, GEBEN possibly caused
-                an internal error when user attempted to set a lineno breakpoint
-                at a blank line.
+	* [ADD] New command `geben-run-to-cursor', bound to 'c' in geben-mode.
+	* [FIX] With Komodo's Perl Debugging Extension, GEBEN possibly caused
+		an internal error when user attempted to set a lineno breakpoint
+		at a blank line.
 
 2009-05-08  reedom  <fujinaka.tohru@gmail.com>
 
-        * [ADD] New variable `geben-version'.
-        * [ADD] New command `geben-clear-breakpoints', bound to 'U' in geben-mode.
-        * [ADD] New custom variable `geben-query-on-clear-breakpoints'.
-        * [ADD] New custom variable `geben-pause-at-entry-line'.
-        * [ADD] New command `geben-toggle-pause-at-entry-line-flag'.
-        * [CHG] Key bindings of `geben-set-redirect' is assigned to `>'.
-        * [CHG] Key bindings of `geben-show-backtrace is also assigned to `t'.
-        * [FIX] Even if you unset a breakpoint successfully in the current
-                session, it was not removed from the persist storage.
+	* [ADD] New variable `geben-version'.
+	* [ADD] New command `geben-clear-breakpoints', bound to 'U' in geben-mode.
+	* [ADD] New custom variable `geben-query-on-clear-breakpoints'.
+	* [ADD] New custom variable `geben-pause-at-entry-line'.
+	* [ADD] New command `geben-toggle-pause-at-entry-line-flag'.
+	* [CHG] Key bindings of `geben-set-redirect' is assigned to `>'.
+	* [CHG] Key bindings of `geben-show-backtrace is also assigned to `t'.
+	* [FIX] Even if you unset a breakpoint successfully in the current
+		session, it was not removed from the persist storage.
 
 2009-04-30  reedom  <fujinaka.tohru@gmail.com>
 
-        * [ADD] Add a new command `geben-eval-current-word'.
+	* [ADD] Add a new command `geben-eval-current-word'.
 
 2009-02-25  reedom  <fujinaka.tohru@gmail.com>
-        
-        * [FIX] With HTTP server running on Windows GEBEN failed to
-                create script file copies.
-        * [FIX] Now `eval' command works against PHP(Xdebug) same as
-                before.
-        
+
+	* [FIX] With HTTP server running on Windows GEBEN failed to
+		create script file copies.
+	* [FIX] Now `eval' command works against PHP(Xdebug) same as
+		before.
+
 2009-02-07  reedom  <fujinaka.tohru@gmail.com>
 
-        * [FIX] Suppressed unwanted focus changing: when the context
-                variable buffer was visible in any window, the focus was
-                moved from the debugging buffer to the context variable
-                buffer after proceeding any continuous command.
+	* [FIX] Suppressed unwanted focus changing: when the context
+		variable buffer was visible in any window, the focus was
+		moved from the debugging buffer to the context variable
+		buffer after proceeding any continuous command.
 
 2009-01-22  reedom  <fujinaka.tohru@gmail.com>
 
-        * [FIX] Bug in Makefile: cannot byte-compile geben.el if the
-                working directory is not one of the Emacs' default
-                directories.
-        
+	* [FIX] Bug in Makefile: cannot byte-compile geben.el if the
+		working directory is not one of the Emacs' default
+		directories.
+
 2009-01-10  reedom  <fujinaka.tohru@gmail.com>
 
-        * [FIX] Implemented `geben-quit-window'
-        * [FIX] Type mismatch error was occurred in breakpoint list mode
-                when any breakpoint deletion was executed.
-        
+	* [FIX] Implemented `geben-quit-window'
+	* [FIX] Type mismatch error was occurred in breakpoint list mode
+		when any breakpoint deletion was executed.
+
 2009-01-08  reedom  <fujinaka.tohru@gmail.com>
 
-        * [CHG] Redesigned.
-        * [CHG] Make not to require an external DBGp client program.
-        
+	* [CHG] Redesigned.
+	* [CHG] Make not to require an external DBGp client program.
+
 2008-11-06  reedom  <fujinaka.tohru@gmail.com>
 
-        * [FIX] When setting breakpoint which needed fileuri against
-                remote script file interactively, GEBEN asked with
-                invalid fileuri as a default.
-        * [FIX] Once debugger engine passed invalid fileuri, which
-                have http:// scheme instead of file://, GEBEN made
-                Emacs raise exceptions at exitting Emacs.
-        
+	* [FIX] When setting breakpoint which needed fileuri against
+		remote script file interactively, GEBEN asked with
+		invalid fileuri as a default.
+	* [FIX] Once debugger engine passed invalid fileuri, which
+		have http:// scheme instead of file://, GEBEN made
+		Emacs raise exceptions at exitting Emacs.
+
 2008-11-04  reedom  <fujinaka.tohru@gmail.com>
 
-        * [ADD] Added Makefile.
-        * [ADD] New commands `geben-mode-help' and similar to display
-                description and key bindings of GEBEN's each mode.
-        * [CHG] Face definition: `geben-backtrace-fileuri'
-        * [CHG] Face definition: `geben-breakpoint-face'
-        
+	* [ADD] Added Makefile.
+	* [ADD] New commands `geben-mode-help' and similar to display
+		description and key bindings of GEBEN's each mode.
+	* [CHG] Face definition: `geben-backtrace-fileuri'
+	* [CHG] Face definition: `geben-breakpoint-face'
+
 2008-11-01  reedom  <fujinaka.tohru@gmail.com>
 
-        * [CHG] Dropped Emacs 21.4 due to use tree-widget.el for the
-                context buffer.
-        * [ADD] New command `geben-display-context and related commands.
-        
+	* [CHG] Dropped Emacs 21.4 due to use tree-widget.el for the
+		context buffer.
+	* [ADD] New command `geben-display-context and related commands.
+
 2008-10-29  reedom  <fujinaka.tohru@gmail.com>
 
-        * [CHG] Renamed `ogeben-debug-target-remotep'
-                to `geben-always-use-mirror-file-p'.
-        * [CHG] Renamed `geben-close-remote-file-after-finish'
-                to `geben-close-mirror-file-after-finish'.
+	* [CHG] Renamed `ogeben-debug-target-remotep'
+		to `geben-always-use-mirror-file-p'.
+	* [CHG] Renamed `geben-close-remote-file-after-finish'
+		to `geben-close-mirror-file-after-finish'.
 
 2008-10-27  reedom  <fujinaka.tohru@gmail.com>
 
-        * [FIX] Location path for remotely fetched source files.
+	* [FIX] Location path for remotely fetched source files.
 
 2008-10-25  reedom  <fujinaka.tohru@gmail.com>
 
-        * [CHG] Rearranged function/variable appearance order
-        * [FIX] hit-value of breakpoints were ignored.
-        * [FIX] In the breakpoint list buffer it was not able for
-                breakpoints except line type to went to setting
-                line.
-        * [FIX] Breakpoint marker handling was not enough for
-                breakpoints except line type.
+	* [CHG] Rearranged function/variable appearance order
+	* [FIX] hit-value of breakpoints were ignored.
+	* [FIX] In the breakpoint list buffer it was not able for
+		breakpoints except line type to went to setting
+		line.
+	* [FIX] Breakpoint marker handling was not enough for
+		breakpoints except line type.
 
 2008-10-24  reedom  <fujinaka.tohru@gmail.com>
 
-        * [FIX] Improved session finishing handling.
-        * [FIX] When reopen a debuggee script file which has
-                any line breakpoints, GEBEN had failed to restore
-                overlays.
-        * [CHG] Wrote some breakpoints related code to overcome
-                the difference between DBGp server implementation.
+	* [FIX] Improved session finishing handling.
+	* [FIX] When reopen a debuggee script file which has
+		any line breakpoints, GEBEN had failed to restore
+		overlays.
+	* [CHG] Wrote some breakpoints related code to overcome
+		the difference between DBGp server implementation.
 
 2008-10-23  reedom  <fujinaka.tohru@gmail.com>
 
-        * [ADD] Support for Komodo Debugger Extentions are added.
+	* [ADD] Support for Komodo Debugger Extentions are added.
 
 2008-10-22  reedom  <reedom_@users.sourceforge.net>
 
-        * [ADD] Supports a kind of breakpoint features found in
-                DBGp specification.
-        * [ADD] New command `geben-breakpoint-menu' and related
-                commands to set a kind of breakpoint.
-                Assigned to `B' key in geben-mode.
-        * [ADD] New command `geben-breakpoint-list' and related
-                commands to display defined breakpoint list.
-                Assigned to `C-c b' key in geben-mode.
-        * [ADD] New face `geben-breakpoint-fileuri'.
-        * [ADD] New face `geben-breakpoint-lineno'.
-        * [ADD] New face `geben-breakpoint-function'.
-        * [ADD] Custom variable `geben-dbgp-feature-list'.
-        * [DEL] Custom variable `geben-dbgp-feature-alist' is
-                now obsolete.
+	* [ADD] Supports a kind of breakpoint features found in
+		DBGp specification.
+	* [ADD] New command `geben-breakpoint-menu' and related
+		commands to set a kind of breakpoint.
+		Assigned to `B' key in geben-mode.
+	* [ADD] New command `geben-breakpoint-list' and related
+		commands to display defined breakpoint list.
+		Assigned to `C-c b' key in geben-mode.
+	* [ADD] New face `geben-breakpoint-fileuri'.
+	* [ADD] New face `geben-breakpoint-lineno'.
+	* [ADD] New face `geben-breakpoint-function'.
+	* [ADD] Custom variable `geben-dbgp-feature-list'.
+	* [DEL] Custom variable `geben-dbgp-feature-alist' is
+		now obsolete.
 
 2008-10-15  reedom  <reedom_@users.sourceforge.net>
 
-        * [FIX] Runtime errors on Emacs 21.4.
+	* [FIX] Runtime errors on Emacs 21.4.
 
 2008-10-13  reedom  <reedom_@users.sourceforge.net>
 
-        * [CHG] Improved redirection buffer scrolling behavior.
+	* [CHG] Improved redirection buffer scrolling behavior.
 
 
 2008-10-13  reedom  <reedom_@users.sourceforge.net>
 
-        * [ADD] New command 'geben-where'.
-                Assigned to `w' key in geben-mode.
-        * [ADD] New face `geben-backtrace-fileuri'.
-        * [ADD] New face `geben-backtrace-lineno'.
-        * [CHG] Renamed DBGp client's buffer name to `*GEBEN process*.
-        * [FIX] Macro version of `geben-dbgp-redirect-buffer-visiblep'
-                causes runtime error on Emacs 22.1.1.
+	* [ADD] New command 'geben-where'.
+		Assigned to `w' key in geben-mode.
+	* [ADD] New face `geben-backtrace-fileuri'.
+	* [ADD] New face `geben-backtrace-lineno'.
+	* [CHG] Renamed DBGp client's buffer name to `*GEBEN process*.
+	* [FIX] Macro version of `geben-dbgp-redirect-buffer-visiblep'
+		causes runtime error on Emacs 22.1.1.
 
 2008-10-11  reedom  <reedom_@users.sourceforge.net>
 
-        * [ADD] STDOUT and STDERR redirection features.
-        * [ADD] New command `geben-set-redirect'.
-                Assigned to `t' key in geben-mode.
-        * [ADD] Custom variable `geben-dbgp-redirect-stdout'.
-        * [ADD] Custom variable `geben-dbgp-redirect-stderr'.
-        * [ADD] Custom variable `geben-dbgp-redirect-combine'.
-        * [ADD] Custom variable `geben-dbgp-redirect-coding-system'.
-        * [ADD] Custom variable `geben-dbgp-redirect-buffer-init-hook'.
+	* [ADD] STDOUT and STDERR redirection features.
+	* [ADD] New command `geben-set-redirect'.
+		Assigned to `t' key in geben-mode.
+	* [ADD] Custom variable `geben-dbgp-redirect-stdout'.
+	* [ADD] Custom variable `geben-dbgp-redirect-stderr'.
+	* [ADD] Custom variable `geben-dbgp-redirect-combine'.
+	* [ADD] Custom variable `geben-dbgp-redirect-coding-system'.
+	* [ADD] Custom variable `geben-dbgp-redirect-buffer-init-hook'.
 
 2008-10-10  reedom  <reedom_@users.sourceforge.net>
 
-        * [ADD] Backtrace display feature.
-        * [ADD] New command `geben-backtrace'.
-                Assigned to `d' key in geben-mode.
-        * [ADD] Custom variable `geben-display-window-function'.
-        * [FIX] `defface' caused an error on Emacs 21.4 because of using
-                the newly added attribute `min-color'.
+	* [ADD] Backtrace display feature.
+	* [ADD] New command `geben-backtrace'.
+		Assigned to `d' key in geben-mode.
+	* [ADD] Custom variable `geben-display-window-function'.
+	* [FIX] `defface' caused an error on Emacs 21.4 because of using
+		the newly added attribute `min-color'.
 
 2008-10-09  reedom  <reedom_@users.sourceforge.net>
 
-        * [ADD] Variable `geben-dbgp-current-stack'.
+	* [ADD] Variable `geben-dbgp-current-stack'.
 
 2008-10-08  reedom  <reedom_@users.sourceforge.net>
 
-        * [FIX] Fixed increasing breakpoints as often as entering
-            debugging session.
-        * [UPD] Now GEBEN sets/unsets breakpoint in off session state.
-        * [FIX] Make GEBEN do not send commands while off session state.
-        * [ADD] New argument QUIT to `geben' command. It can be specified
-                by the prefix arg, as typing like `M-x C-u geben'.
-                It asks executed GEBEN to quit.
+	* [FIX] Fixed increasing breakpoints as often as entering
+	    debugging session.
+	* [UPD] Now GEBEN sets/unsets breakpoint in off session state.
+	* [FIX] Make GEBEN do not send commands while off session state.
+	* [ADD] New argument QUIT to `geben' command. It can be specified
+		by the prefix arg, as typing like `M-x C-u geben'.
+		It asks executed GEBEN to quit.
 
 2008-10-08  reedom  <reedom_@users.sourceforge.net>
 
-        * [FIX] Macro version of `geben-what-line' didn't run on Meadow 3.00.
-        * [FIX] Byte compiled geben.el could raise undefined symbol error.
+	* [FIX] Macro version of `geben-what-line' didn't run on Meadow 3.00.
+	* [FIX] Byte compiled geben.el could raise undefined symbol error.
 
 2008-10-07  reedom  <reedom_@users.sourceforge.net>
 
-        * [ADD] Custom face `geben-breakpoint-face'.
-        * [ADD] Suppress inquiry of DBGp client termination at exiting emacs.
+	* [ADD] Custom face `geben-breakpoint-face'.
+	* [ADD] Suppress inquiry of DBGp client termination at exiting emacs.
 
 2008-10-06  reedom  <reedom_@users.sourceforge.net>
 
-        * [UPD] Now GEBEN manages buffer modification around where line-no
-                breakpoint set. If there was line insertion before
-                breakpoint, GEBEN moves the following line-no breakpoints
-                downwards. Highlight effect(overlay) will be managed as it
-                should be.
-        * [ADD] Custom variable `geben-temporary-file-directory'.
-        * [ADD] Custom variable `geben-close-remote-file-after-finish'.
-        * [ADD] Custom variable `geben-show-breakpoints-debugging-only'.
+	* [UPD] Now GEBEN manages buffer modification around where line-no
+		breakpoint set. If there was line insertion before
+		breakpoint, GEBEN moves the following line-no breakpoints
+		downwards. Highlight effect(overlay) will be managed as it
+		should be.
+	* [ADD] Custom variable `geben-temporary-file-directory'.
+	* [ADD] Custom variable `geben-close-remote-file-after-finish'.
+	* [ADD] Custom variable `geben-show-breakpoints-debugging-only'.
 
 2008-10-05  reedom  <reedom_@users.sourceforge.net>
 
-        * [FIX] Make GEBEN to call `step_into' at the end of the
-                initial state to place debugger's cursor at the
-                entry point of the debuggee script.
-        * [FIX] Make GEBEN to call `stop' at the stopping state
-                to finish up a debugging session as user expect.
-        * [ADD] Custom variable `geben-dbgp-feature-alist'.
-        * [UPD] Now GEBEN send `feature_set' commands with the variable
-                `geben-dbgp-feature-alist' in the initial state.
-        * [ADD] Custom variable `geben-dbgp-command-line'.
+	* [FIX] Make GEBEN to call `step_into' at the end of the
+		initial state to place debugger's cursor at the
+		entry point of the debuggee script.
+	* [FIX] Make GEBEN to call `stop' at the stopping state
+		to finish up a debugging session as user expect.
+	* [ADD] Custom variable `geben-dbgp-feature-alist'.
+	* [UPD] Now GEBEN send `feature_set' commands with the variable
+		`geben-dbgp-feature-alist' in the initial state.
+	* [ADD] Custom variable `geben-dbgp-command-line'.
 
 2008-10-04  reedom  <reedom_@users.sourceforge.net>
 
-        * geben.el: [CHG] Removed dependency on CEDET. With this changing
-                          many functions were removed/renamed/added
-        * geben.el: [CHG] Moved all of GEBEN implementation to geben.el.
+	* geben.el: [CHG] Removed dependency on CEDET. With this changing
+			  many functions were removed/renamed/added
+	* geben.el: [CHG] Moved all of GEBEN implementation to geben.el.
 
 2007-07-04  thoney_f(reedom)  <reedom_@users.sourceforge.net>
 
-        * geben-dbgp.el: [FIX] geben-response-eval didn't decode `PHP object'.
-        * geben-dbgp.el: [FIX] An overlay-arrow-position leaved after finishing
-                               a debug session.
+	* geben-dbgp.el: [FIX] geben-response-eval didn't decode `PHP object'.
+	* geben-dbgp.el: [FIX] An overlay-arrow-position leaved after finishing
+			       a debug session.
 
 2006-12-26  thoney_f(reedom)  <reedom_@users.sourceforge.net>
 
-        * Released version 0.01, a sample implementation.
+	* Released version 0.01, a sample implementation.
 
