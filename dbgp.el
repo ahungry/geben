@@ -1,5 +1,4 @@
 ;;; dbgp.el --- DBGp protocol interface
-;; $Id$
 ;; 
 ;; Filename: dbgp.el
 ;; Author: reedom <fujinaka.tohru@gmail.com>
@@ -666,12 +665,14 @@ It is saved for when this flag is not set.")
   "")
 (put 'dbgp-buffer-process 'permanent-local t)
 
-(defadvice open-network-stream (around debugclient-pass-process-to-comint)
-  "[comint hack] Pass the spawned DBGp client process to comint."
-  (let* ((buffer (ad-get-arg 1))
-	 (proc (buffer-local-value 'dbgp-buffer-process buffer)))
-    (set-process-buffer proc buffer)
-    (setq ad-return-value proc)))
+
+;; (defadvice open-network-stream (around debugclient-pass-process-to-comint last)
+;;   "[comint hack] Pass the spawned DBGp client process to comint."
+;;   (let* ((buffer (ad-get-arg 1))
+;; 	 (proc (buffer-local-value 'dbgp-buffer-process buffer)))
+;;     (if proc (progn (set-process-buffer proc buffer)
+;; 		    (setq ad-return-value proc)))))
+
 
 (defun dbgp-comint-setup (proc string)
   "Setup a new comint buffer for a newly created session process PROC.
@@ -717,10 +718,12 @@ takes over the filter."
 	(set (make-local-variable 'dbgp-filter-input-list) nil)
 	(set (make-local-variable 'dbgp-filter-pending-text) nil))
       ;; setup comint buffer
+      (ad-enable-advice 'open-network-stream 'around 'debugclient-pass-process-to-comint)
       (ad-activate 'open-network-stream)
       (unwind-protect
 	  (make-comint-in-buffer "DBGp-Client" buf (cons t t))
-	(ad-deactivate 'open-network-stream))
+	(ad-deactivate 'open-network-stream)
+        (ad-disable-advice 'open-network-stream 'around 'debugclient-pass-process-to-comint))
       ;; update PROC properties
       (set-process-filter proc #'dbgp-session-filter)
       (set-process-sentinel proc #'dbgp-session-sentinel)
@@ -934,5 +937,17 @@ takes over the filter."
   (let ((output "\nDisconnected.\n\n"))
     (when (buffer-live-p (process-buffer proc))
       (dbgp-session-echo-input proc output))))
+
+
+(defadvice open-network-stream (around debugclient-pass-process-to-comint )
+  "[comint hack] Pass the spawned DBGp client process to comint."
+      (let* ((buffer (ad-get-arg 1))
+	     (proc (buffer-local-value 'dbgp-buffer-process buffer)))
+	(set-process-buffer proc buffer)
+	(setq ad-return-value proc) ))
+
+;;(ad-unadvise 'open-network-stream)
+;;(ad-deactivate 'open-network-stream  )
+(ad-disable-advice 'open-network-stream 'around 'debugclient-pass-process-to-comint)
 
 (provide 'dbgp)
