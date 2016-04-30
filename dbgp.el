@@ -1,45 +1,46 @@
 ;;; dbgp.el --- DBGp protocol interface
-;; 
+
+;; Copyright (C) 2005-2010  reedom <fujinaka.tohru@gmail.com>
+;; Copyright (C) 2016  Matthew Carter
+
 ;; Filename: dbgp.el
-;; Author: reedom <fujinaka.tohru@gmail.com>
-;; Maintainer: reedom <fujinaka.tohru@gmail.com>
-;; Version: 0.26
-;; URL: http://code.google.com/p/geben-on-emacs/
+;; Author: Matthew Carter <m@ahungry.com>
+;; Code derived from Original Author: reedom <fujinaka.tohru@gmail.com>
+;; Maintainer: Matthew Carter <m@ahungry.com>
+;; URL: https://github.com/ahungry/geben
+;; Version: 1.0.0
 ;; Keywords: DBGp, debugger, PHP, Xdebug, Perl, Python, Ruby, Tcl, Komodo
-;; Compatibility: Emacs 22.1
-;;
+;; Compatibility: Emacs 24+
+;; Package-Requires: ((emacs "24") (cl-lib "0.5"))
+
 ;; This file is not part of GNU Emacs
-;;
-;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
-;; published by the Free Software Foundation; either version 2, or
+
+;;; License:
+
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
 ;; (at your option) any later version.
-;; 
+;;
 ;; This program is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;; General Public License for more details.
-;; 
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
 ;; You should have received a copy of the GNU General Public License
-;; along with this program; see the file COPYING.  If not, write to
-;; the Free Software Foundation, Inc., 51 Franklin Street, Fifth
-;; Floor, Boston, MA 02110-1301, USA.
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 ;;; Commentary:
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
+
 ;;; Code:
 
 (eval-when-compile
   (when (or (not (boundp 'emacs-version))
-	    (string< emacs-version "22.1"))
-    (error (concat "geben.el: This package requires Emacs 22.1 or later."))))
+	    (string< emacs-version "24"))
+    (error (concat "geben.el: This package requires Emacs 24 or later."))))
 
 (eval-and-compile
-  (require 'cl)
+  (require 'cl-lib)
   (require 'xml))
 
 (require 'comint)
@@ -47,26 +48,6 @@
 ;;--------------------------------------------------------------
 ;; customization
 ;;--------------------------------------------------------------
-
-;; For compatibility between versions of custom
-(eval-and-compile
-  (condition-case ()
-      (require 'custom)
-    (error nil))
-  (if (and (featurep 'custom) (fboundp 'custom-declare-variable)
-	   ;; Some XEmacsen w/ custom don't have :set keyword.
-	   ;; This protects them against custom.
-	   (fboundp 'custom-initialize-set))
-      nil ;; We've got what we needed
-    ;; We have the old custom-library, hack around it!
-    (if (boundp 'defgroup)
-	nil
-      (defmacro defgroup (&rest args)
-	nil))
-    (if (boundp 'defcustom)
-	nil
-      (defmacro defcustom (var value doc &rest args)
-	`(defvar (,var) (,value) (,doc))))))
 
 ;; customize group
 
@@ -141,10 +122,10 @@ to connect to DBGp listener of this address."
 
 (defsubst dbgp-ip-get (proc)
   (first (process-contact proc)))
-  
+
 (defsubst dbgp-port-get (proc)
   (second (process-contact proc)))
-  
+
 (defsubst dbgp-proxy-p (proc)
   (and (dbgp-plist-get proc :proxy)
        t))
@@ -181,11 +162,11 @@ to connect to DBGp listener of this address."
 ;;
 ;; -- DBGp listener custom properties --
 ;;
-;; :session-init	default function for a new DBGp session 
+;; :session-init	default function for a new DBGp session
 ;;			process to initialize a new session.
-;; :session-filter	default function for a new DBGp session 
+;; :session-filter	default function for a new DBGp session
 ;;			process to filter protocol messages.
-;; :session-sentinel	default function for a new DBGp session 
+;; :session-sentinel	default function for a new DBGp session
 ;;			called when the session is disconnected.
 
 (defvar dbgp-listeners nil
@@ -269,7 +250,7 @@ Fourth arg DEFAULT-VALUE is the default value.  If non-nil, it is used
     (and history
 	 (set history (cons str (remove str (symbol-value history)))))
     str))
-      
+
 (defun dbgp-read-integer (prompt &optional default history)
   "Read a numeric value in the minibuffer, prompting with PROMPT.
 DEFAULT specifies a default value to return if the user just types RET.
@@ -296,7 +277,7 @@ See `read-from-minibuffer' for details of HISTORY argument."
     (and history
 	 (set history (cons n (remq n (symbol-value history)))))
     n))
-      
+
 ;;--------------------------------------------------------------
 ;; DBGp listener start/stop
 ;;--------------------------------------------------------------
@@ -379,7 +360,7 @@ See `read-from-minibuffer' for details of HISTORY argument."
     (dbgp-listener-kill port)
     (and (interactive-p)
 	 (message (if listener
-		      "The DBGp listener for port %d is terminated." 
+		      "The DBGp listener for port %d is terminated."
 		    "DBGp listener for port %d does not exist.")
 		  port))
     (and listener t)))
@@ -444,7 +425,7 @@ associating with the IDEKEY."
 			     dbgp-listeners)))
       (if listener
 	  (return-from dbgp-proxy-register-exec
-	    (cons listener 
+	    (cons listener
 		  (format "The DBGp proxy listener has already been started. idekey: %s" idekey)))))
 
     ;; send commands to the external proxy instance
@@ -577,7 +558,7 @@ After unregistration, it kills the listener instance."
 	 (cdr status)
 	 (message (cdr status)))
     status))
-  
+
 ;;;###autoload
 (defun dbgp-proxy-unregister-exec (proxy)
   "Unregister PROXY from a DBGp proxy.
@@ -593,7 +574,7 @@ After unregistration, it kills the listener instance."
 	  (or (equal "1" (xml-get-attribute result 'success))
 	      (dbgp-xml-get-error-message result))
 	result))))
-		    
+
 (defun dbgp-sessions-kill-all ()
   (interactive)
   (mapc 'delete-process dbgp-sessions)
@@ -633,7 +614,7 @@ or a symbol: `:proxy-not-found', `:no-response', or `:invalid-xml'."
   (let ((listener (dbgp-listener-find port)))
     (and listener
 	 (eq 'listen (process-status listener)))))
-  
+
 ;;--------------------------------------------------------------
 ;; DBGp listener process log and sentinel
 ;;--------------------------------------------------------------
@@ -772,7 +753,7 @@ takes over the filter."
 	      (with-selected-window process-window
 		(goto-char (point-max)))
 	    (goto-char (point-max))))))))
-  
+
 (defun dbgp-session-filter (proc string)
   ;; Here's where the actual buffer insertion is done
   (let ((buf (process-buffer proc))
@@ -792,7 +773,7 @@ takes over the filter."
 						  (concat dbgp-filter-pending-text string)
 						string))
 	       (return-from dbgp-session-filter))
-	
+
 	     ;; If we have to ask a question during the processing,
 	     ;; defer any additional text that comes from the debugger
 	     ;; during that time.
@@ -815,7 +796,7 @@ takes over the filter."
 				     dbgp-delete-prompt-marker)
 		      (comint-update-fence)
 		      (set-marker dbgp-delete-prompt-marker nil))))
-		
+
 	      ;; Save the process output, checking for source file markers.
 	      (and chunks
 		   (setq output
@@ -951,3 +932,5 @@ takes over the filter."
 (ad-disable-advice 'open-network-stream 'around 'debugclient-pass-process-to-comint)
 
 (provide 'dbgp)
+
+;;; dbgp.el ends here

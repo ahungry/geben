@@ -1,3 +1,9 @@
+2016-04-30 Matthew Carter  <m@ahungry.com>
+
+	* [CHG] Took over maintenance of project.
+	        Modernize codebase/remove deprecated Emacs calls.
+	        Relicense from GPLv2 to GPLv3.
+
 2016-02-12 Ignacio Torres Masdeu  <i@itorres.net>
 
 	* [FIX] Mangle defadvice that interfered with the use of
@@ -246,4 +252,3 @@
 2006-12-26  thoney_f(reedom)  <reedom_@users.sourceforge.net>
 
 	* Released version 0.01, a sample implementation.
-

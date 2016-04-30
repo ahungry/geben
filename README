@@ -1,4 +1,4 @@
-GEBEN-0.26 (Beta)
+GEBEN-1.0.0
 -----------------
 
 GEBEN is a software package that interfaces Emacs to DBGp protocol
@@ -29,7 +29,7 @@ REQUIREMENTS
    - etc.
 
 [client side]
- - Emacs22.1 or later
+ - Emacs 24 or later
 
 
 BIG CHANGES
@@ -161,16 +161,17 @@ Known Issues
 
   - If Xdebug is not loaded not as `zend_extension', some feature do
     not work as expectedly (e.g. step_into).
-    
+
 
 SUPPORT
 -------
 
-We all time need your supports - bug reports, feature requests,
+We always need your support - bug reports, feature requests,
 code/documents/design contributions, and donations.
+
 To submit one or more of them, please visit our web site.
 
- http://code.google.com/p/geben-on-emacs/
+ https://github.com/ahungry/geben
 
 Also there are mailinglists.
 
@@ -183,7 +184,3 @@ For package contributions:
 Your posts will make GEBEN development progress.
 
 Thank you.
-
---
-
-reedom <fujinaka.tohru@gmail.com>
