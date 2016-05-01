@@ -104,7 +104,7 @@ Typically `pop-to-buffer' or `switch-to-buffer'."
     (symbol-value 'geben-dynamic-property-buffer-p)))
 
 (defun geben-dbgp-display-window (buf)
-  "Display a buffer anywhere in a window, depends on the circumstance."
+  "Display a buffer BUF anywhere in a window, depends on the circumstance."
   (cond
    ((get-buffer-window buf)
     (select-window (get-buffer-window buf))
@@ -236,7 +236,8 @@ If POS is omitted, then the current position is used."
       (defalias 'overlay-livep 'overlay-buffer)))
 
 (defun geben-overlay-make-line (lineno &optional buf)
-  "Create a whole line overlay."
+  "Create a whole line overlay on LINENO line.
+Optionally, in buffer BUF."
   (with-current-buffer (or buf (current-buffer))
     (save-excursion
       (widen)
@@ -270,7 +271,8 @@ If POS is omitted, then the current position is used."
 			   callback)))))
 
 (defun geben-dbgp-decode-string (string data-encoding coding-system)
-  "Decode encoded STRING."
+  "Decode encoded STRING.
+Use the DATA-ENCODING appropriate to the CODING-SYSTEM."
   (when string
     (let ((s string))
       (when (consp s)
@@ -385,7 +387,7 @@ at the entry line of the script."
 ;; initialize
 
 (defsubst geben-session-init (session init-msg)
-  "Initialize a session of a process PROC."
+  "Initialize a SESSION of a process PROC, with the INIT-MSG."
   (geben-session-tempdir-setup session)
   (setf (geben-session-initmsg session) init-msg)
   (setf (geben-session-xdebug-p session)
@@ -400,6 +402,7 @@ at the entry line of the script."
   (run-hook-with-args 'geben-session-enter-hook session))
 
 (defun geben-session-storage-create (session)
+  "Create the necessary storage for the SESSION."
   (let* ((initmsg (geben-session-initmsg session))
 	 (process (geben-session-process session))
 	 (listener (dbgp-plist-get process :listener))
@@ -439,7 +442,7 @@ at the entry line of the script."
 	     geben-storages)))
 
 (defsubst geben-session-release (session)
-  "Initialize a session of a process PROC."
+  "Initialize a SESSION of a process PROC."
   (setf (geben-session-process session) nil)
   (setf (geben-session-cursor session) nil)
   (geben-session-tempdir-remove session)
@@ -447,6 +450,7 @@ at the entry line of the script."
   (run-hook-with-args 'geben-session-exit-hook session))
 
 (defsubst geben-session-active-p (session)
+  "Evaluate the active state of SESSION.  If active, will return t, otherwise nil."
   (let ((proc (geben-session-process session)))
     (and (processp proc)
 	 (eq 'open (process-status proc)))))
@@ -454,7 +458,7 @@ at the entry line of the script."
 ;; tid
 
 (defsubst geben-session-next-tid (session)
-  "Get transaction id for next command."
+  "Get transaction id for next command in SESSION."
   (prog1
       (geben-session-tid session)
     (incf (geben-session-tid session))))
@@ -462,6 +466,7 @@ at the entry line of the script."
 ;; buffer
 
 (defsubst geben-session-buffer-name (session format-string)
+  "Return the buffer name for SESSION, formatted according to FORMAT-STRING."
   (let* ((proc (geben-session-process session))
 	 (idekey (plist-get (dbgp-proxy-get proc) :idekey)))
     (format format-string
@@ -490,7 +495,7 @@ at the entry line of the script."
 ;; temporary directory
 
 (defun geben-session-tempdir-setup (session)
-  "Setup temporary directory."
+  "Setup temporary directory for SESSION."
   (let* ((proc (geben-session-process session))
 	 (gebendir (file-truename geben-temporary-file-directory))
 	 (leafdir (format "%d" (second (process-contact proc))))
@@ -501,7 +506,7 @@ at the entry line of the script."
     (setf (geben-session-tempdir session) tempdir)))
 
 (defun geben-session-tempdir-remove (session)
-  "Remove temporary directory."
+  "Remove temporary directory for SESSION."
   (let ((tempdir (geben-session-tempdir session)))
     (when (file-directory-p tempdir)
       (geben-remove-directory-tree tempdir))))
@@ -509,13 +514,13 @@ at the entry line of the script."
 ;; misc
 
 (defsubst geben-session-ip-get (session)
-  "Get ip address of the host server."
+  "Get ip address of the host server in SESSION."
   (let* ((proc (geben-session-process session))
 	 (listener (dbgp-listener-get proc)))
     (format-network-address (dbgp-ip-get proc) t)))
 
 (defun geben-session-remote-p (session)
-  "Get ip address of the host server."
+  "Get ip address of the host server IN SESSION."
   (geben-remote-p (geben-session-ip-get session)))
 
 
@@ -545,13 +550,13 @@ at the entry line of the script."
 	      ,key))
 
 (defsubst geben-cmd-param-get (cmd flag)
-  "Get FLAG's parameter used in CMD.
+  "For CMD, get FLAG's parameter used.
 For a DBGp command \`stack_get -i 1 -d 2\',
 `(geben-cmd-param-get cmd \"-d\")\' gets \"2\"."
   (cdr-safe (assoc flag (plist-get cmd :param))))
 
 (defun geben-cmd-expand (cmd)
-  "Build a send command string for DBGp protocol."
+  "Build a send command CMD string for DBGp protocol."
   (mapconcat #'(lambda (x)
 		 (cond ((stringp x) x)
 		       ((integerp x) (int-to-string x))
@@ -565,7 +570,8 @@ For a DBGp command \`stack_get -i 1 -d 2\',
 	     " "))
 
 (defsubst geben-session-cmd-make (session operand params)
-  "Create a new command object."
+  "Create a new command object for SESSION.
+Assign OPERAND to :operand, and PARAMS to :param in the plist."
   (list :session session
 	:tid (geben-session-next-tid session)
 	:operand operand
@@ -578,7 +584,7 @@ For a DBGp command \`stack_get -i 1 -d 2\',
       (setf (geben-session-cmd session) (list cmd)))))
 
 (defun geben-session-cmd-remove (session tid)
-  "Get a command object from the command hash table specified by TID."
+  "Get a command object from the command hash table for SESSION specified by TID."
   (let ((cmds (geben-session-cmd session)))
     (if (eq tid (plist-get (car cmds) :tid))
 	(prog1
@@ -604,7 +610,7 @@ For a DBGp command \`stack_get -i 1 -d 2\',
 	 (string-to-number tid))))
 
 (defun geben-dbgp-entry (session msg)
-  "Analyze MSG and dispatch to a specific handler."
+  "Within SESSION, analyze MSG and dispatch to a specific handler."
   ;; remain session status ('connect, 'init, 'break, 'stopping, 'stopped)
   (let ((handler (intern-soft (concat "geben-dbgp-handle-"
 				      (symbol-name (xml-node-name msg)))))
@@ -617,12 +623,12 @@ For a DBGp command \`stack_get -i 1 -d 2\',
 (defvar geben-dbgp-init-hook nil)
 
 (defun geben-dbgp-handle-init (session msg)
-  "Handle a init message."
+  "Within SESSION, handle a init message MSG."
   (geben-session-init session msg)
   (run-hook-with-args 'geben-dbgp-init-hook session))
 
 (defun geben-dbgp-handle-response (session msg)
-  "Handle a response message."
+  "Within SESSION, handle a response message MSG."
   (let* ((tid (geben-dbgp-tid-read msg))
 	 (cmd (geben-session-cmd-remove session tid))
 	 (err (dbgp-xml-get-error-node msg)))
@@ -644,7 +650,7 @@ For a DBGp command \`stack_get -i 1 -d 2\',
 	  (plist-get cmd :callback))))
 
 (defun geben-dbgp-handle-status (session msg)
-  "Handle status code in a response message."
+  "Within SESSION, handle status code in a response message MSG."
   (let ((status (xml-get-attribute msg 'status)))
     (cond
      ((equal status "stopping")
@@ -660,14 +666,15 @@ For a DBGp command \`stack_get -i 1 -d 2\',
        (dbgp-session-send-string (geben-session-process session) string t)))
 
 (defun geben-send-raw-command (session fmt &rest arg)
-  "Send a command string to a debugger engine.
+  "Send a command string to a debugger engine for SESSION.
 The command string will be built up with FMT and ARG with a help of
 the string formatter function `format'."
   (let ((cmd (apply #'format fmt arg)))
     (geben-dbgp-send-string session cmd)))
 
 (defun geben-dbgp-send-command (session operand &rest params)
-  "Send a command to a debugger engine.
+  "Send a command to a debugger engine for SESSION.
+OPERAND and PARAMS will be passed along to 'geben-session-cmd-make.
 Return a cmd list."
   (if (geben-session-active-p session)
       (let ((cmd (geben-session-cmd-make session operand params)))
@@ -692,27 +699,27 @@ Return a cmd list."
 ;; step_into
 
 (defun geben-dbgp-command-step-into (session)
-  "Send \`step_into\' command."
+  "Send \`step_into\' command to the SESSION."
   (geben-dbgp-send-command session "step_into"))
 
 (defun geben-dbgp-response-step-into (session cmd msg)
-  "A response message handler for \`step_into\' command."
+  "For SESSION, send a CMD response MSG handler for \`step_into\'."
   (run-hook-with-args 'geben-dbgp-continuous-command-hook session))
 
 ;; step_over
 
 (defun geben-dbgp-command-step-over (session)
-  "Send \`step_over\' command."
+  "Send \`step_over\' command to the SESSION."
   (geben-dbgp-send-command session "step_over"))
 
 (defun geben-dbgp-response-step-over (session cmd msg)
-  "A response message handler for \`step_over\' command."
+  "For SESSION, send a CMD response MSG handler for \`step_over\'."
   (run-hook-with-args 'geben-dbgp-continuous-command-hook session))
 
 ;; step_out
 
 (defun geben-dbgp-command-step-out (session)
-  "Send \`step_out\' command."
+  "Send \`step_out\' command to the SESSION."
   (geben-dbgp-send-command session "step_out"))
 
 (defun geben-dbgp-response-step-out (session cmd msg)
