@@ -8,7 +8,7 @@
 ;; Code derived from Original Author: reedom <fujinaka.tohru@gmail.com>
 ;; Maintainer: Matthew Carter <m@ahungry.com>
 ;; URL: https://github.com/ahungry/geben
-;; Version: 1.0.0
+;; Version: 1.0.1
 ;; Keywords: DBGp, debugger, PHP, Xdebug, Perl, Python, Ruby, Tcl, Komodo
 ;; Compatibility: Emacs 24+
 ;; Package-Requires: ((emacs "24") (cl-lib "0.5"))
@@ -72,7 +72,7 @@
   (require 'tree-widget)
   (require 'dbgp))
 
-(defvar geben-version "1.0.0")
+(defvar geben-version "1.0.1")
 
 ;;--------------------------------------------------------------
 ;; customization
@@ -253,14 +253,14 @@ Optionally, in buffer BUF."
 ;; DBGp related utilities
 ;;==============================================================
 
-(defmacro* geben-dbgp-sequence (cmd &rest callback)
+(cl-defmacro geben-dbgp-sequence (cmd &rest callback)
   (declare (indent 1)
 	   (debug (form &rest form)))
   (list 'progn
 	(list 'geben-plist-append cmd
 	      :callback (car callback))))
 
-(defmacro* geben-dbgp-sequence-bind (bindings cmd callback)
+(cl-defmacro geben-dbgp-sequence-bind (bindings cmd callback)
   (declare (indent 1)
 	   (debug (sexp form lambda-expr)))
   (macroexpand-all

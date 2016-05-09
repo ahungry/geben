@@ -1,3 +1,8 @@
+Version 1.0.1 (2016-05-08)
+
+  * Fix cl.el call
+    - Changed defmacro* to cl-defmacro.
+
 Version 1.0.0 (2016-04-30)
 
   * Modernized codebase:
