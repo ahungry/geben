@@ -1,3 +1,8 @@
+Version 1.0.2 (2016-05-08)
+
+  * Fix cl.el call
+    - Changed flet to cl-flet.
+
 Version 1.0.1 (2016-05-08)
 
   * Fix cl.el call

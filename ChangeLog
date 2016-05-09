@@ -1,5 +1,9 @@
 2016-05-08 Matthew Carter  <m@ahungry.com>
 
+	* [CHG] Change flet call to cl-flet.
+
+2016-05-08 Matthew Carter  <m@ahungry.com>
+
 	* [CHG] Change defmacro* call to cl-defmacro.
 
 2016-04-30 Matthew Carter  <m@ahungry.com>

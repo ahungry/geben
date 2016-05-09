@@ -8,7 +8,7 @@
 ;; Code derived from Original Author: reedom <fujinaka.tohru@gmail.com>
 ;; Maintainer: Matthew Carter <m@ahungry.com>
 ;; URL: https://github.com/ahungry/geben
-;; Version: 1.0.1
+;; Version: 1.0.2
 ;; Keywords: DBGp, debugger, PHP, Xdebug, Perl, Python, Ruby, Tcl, Komodo
 ;; Compatibility: Emacs 24+
 ;; Package-Requires: ((emacs "24") (cl-lib "0.5"))
@@ -72,7 +72,7 @@
   (require 'tree-widget)
   (require 'dbgp))
 
-(defvar geben-version "1.0.1")
+(defvar geben-version "1.0.2")
 
 ;;--------------------------------------------------------------
 ;; customization
@@ -151,7 +151,7 @@ Typically `pop-to-buffer' or `switch-to-buffer'."
 
 (defsubst geben-flatten (x)
   "Make cons X to a flat list."
-  (flet ((rec (x acc)
+  (cl-flet ((rec (x acc)
 	      (cond ((null x) acc)
 		    ((atom x) (cons x acc))
 		    (t (rec (car x) (rec (cdr x) acc))))))
