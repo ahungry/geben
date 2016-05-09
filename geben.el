@@ -149,13 +149,15 @@ Typically `pop-to-buffer' or `switch-to-buffer'."
 ;; utilities
 ;;==============================================================
 
+(defun geben-rec (x acc)
+  "Helper function for recursively flattening a list, where X is the list and ACC is the accumulator."
+  (cond ((null x) acc)
+        ((atom x) (cons x acc))
+        (t (geben-rec (car x) (geben-rec (cdr x) acc)))))
+
 (defsubst geben-flatten (x)
   "Make cons X to a flat list."
-  (cl-flet ((rec (x acc)
-	      (cond ((null x) acc)
-		    ((atom x) (cons x acc))
-		    (t (rec (car x) (rec (cdr x) acc))))))
-    (rec x nil)))
+    (geben-rec x nil))
 
 (defsubst geben-what-line (&optional pos)
   "Get the number of the line in which POS is located.
