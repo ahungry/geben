@@ -1,3 +1,7 @@
+2016-06-14 Matthew Carter  <m@ahungry.com>
+
+	* [CHG] Change defstruct call to cl-defstruct.
+
 2016-05-08 Matthew Carter  <m@ahungry.com>
 
 	* [CHG] Change flet call to cl-flet.

@@ -72,7 +72,7 @@
   (require 'tree-widget)
   (require 'dbgp))
 
-(defvar geben-version "1.0.2")
+(defvar geben-version "1.0.3")
 
 ;;--------------------------------------------------------------
 ;; customization
@@ -355,7 +355,7 @@ at the entry line of the script."
   :group 'geben
   :type 'boolean)
 
-(defstruct (geben-session
+(cl-defstruct (geben-session
 	    (:constructor nil)
 	    (:constructor geben-session-make))
   "Represent a DBGp protocol connection session."
@@ -1190,7 +1190,7 @@ will be displayed in a window."
 ;; breakpoints
 ;;==============================================================
 
-(defstruct (geben-breakpoint
+(cl-defstruct (geben-breakpoint
 	    (:constructor nil)
 	    (:constructor geben-breakpoint-make))
   "Breakpoint setting.
@@ -1962,7 +1962,7 @@ the file."
   "Face used to highlight numeric value."
   :group 'geben-highlighting-faces)
 
-(defstruct (geben-context
+(cl-defstruct (geben-context
 	    (:constructor nil)
 	    (:constructor geben-context-make))
   names	   ; context names alist(KEY: context name, VALUE: context id)
@@ -2619,7 +2619,7 @@ The buffer commands are:
 (defconst geben-redirect-stderr-buffer-name "*GEBEN<%s> stderr*"
   "Name for the debuggee script's STDERR redirection buffer.")
 
-(defstruct (geben-redirect
+(cl-defstruct (geben-redirect
 	    (:constructor nil)
 	    (:constructor geben-redirect-make))
   (stdout :redirect)
