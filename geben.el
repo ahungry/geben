@@ -64,7 +64,8 @@
 (eval-when-compile
   (when (or (not (boundp 'emacs-version))
 	    (string< emacs-version "24"))
-    (error (concat "geben.el: This package requires Emacs 24 or later."))))
+    (error (concat "geben.el: This package requires Emacs 24 or later.")))
+  (require 'cl))
 
 (eval-and-compile
   (require 'cl-lib)
