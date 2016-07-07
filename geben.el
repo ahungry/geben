@@ -100,6 +100,11 @@ Typically `pop-to-buffer' or `switch-to-buffer'."
   :group 'geben
   :type 'function)
 
+(defcustom geben-show-redirect-buffers t
+  "Shall stdout/stderr buffers be shown automatically."
+  :group 'geben
+  :type 'boolean)
+
 (defsubst geben-dbgp-dynamic-property-bufferp (buf)
   (with-current-buffer buf
     (symbol-value 'geben-dynamic-property-buffer-p)))
@@ -2714,7 +2719,8 @@ The buffer commands are:
 		   (geben-redirect-coding-system (geben-session-redirect session)))))
 	(goto-char (or save-pos
 		       (point-max))))
-      (geben-dbgp-display-window buf))))
+      (when geben-show-redirect-buffers
+        (geben-dbgp-display-window buf)))))
 
 (defun geben-dbgp-command-stdout (session mode)
   "Send `stdout' command."
