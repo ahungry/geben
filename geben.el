@@ -2813,28 +2813,29 @@ The buffer commands are:
                                     (not (dbgp-proxy-p oproc))
                                     (eq port (dbgp-port-get (dbgp-listener-get oproc))))))
                            geben-sessions)))))
-        (user-filter-accept-p (geben-dbgp-session-user-filter-accept-p proc string)))
+        (user-filtered-reason (geben-dbgp-session-user-filter proc string)))
     (unless accept-p
       (message "GEBEN: Rejected new connection from %s (Already in debugging)"
                (car (process-contact proc))))
-    (unless user-filter-accept-p
-      (message "GEBEN: Rejected new connection from %s (user filtered)"
-               (car (process-contact proc))))
-    accept-p))
+    (when user-filtered-reason
+      (message "GEBEN: Rejected new connection from %s due to %s"
+               (car (process-contact proc)) user-filtered-reason))
+    (and accept-p (not user-filtered-reason))))
 
 (defcustom geben-dbgp-session-user-filter-uri-regexp nil
   "Ignore all debug requests with matched uris"
   :group 'geben
   :type '(repeat string))
 
-(defun geben-dbgp-session-user-filter-accept-p (proc string)
+(defun geben-dbgp-session-user-filter (proc string)
   "Do not accept a session if its fileuri can be matched against "
   (let* ((xml (car (with-temp-buffer
                      (insert string)
                      (xml-parse-region (point-min) (point-max)))))
          (fileuri (xml-get-attribute-or-nil xml 'fileuri)))
-    (and (cl-notany (lambda (reg)
-                      (string-match reg fileuri)) geben-dbgp-session-user-filter-uri-regexp))))
+    (when (cl-some (lambda (reg)
+                     (string-match reg fileuri)) geben-dbgp-session-user-filter-uri-regexp)
+      fileuri)))
 
 (defun geben-dbgp-session-init (proc)
   "Initialize SESSION environment."
