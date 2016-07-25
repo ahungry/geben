@@ -3690,6 +3690,25 @@ associating with the IDEKEY."
 
 (defalias 'geben-proxy-end #'dbgp-proxy-unregister)
 
+;; geben full-frame mode
+
+(defun geben-full-frame-save (session)
+  (window-configuration-to-register 'geben-full-frame-register)
+  (delete-other-windows))
+
+(defun geben-full-frame-restore (session)
+  (jump-to-register 'geben-full-frame-register t))
+
+;;;###autoload
+(define-minor-mode geben-full-frame-mode "" :global t
+  (if geben-full-frame-mode
+      (progn
+        (add-hook 'geben-session-enter-hook 'geben-full-frame-save)
+        (add-hook 'geben-session-exit-hook 'geben-full-frame-restore))
+    (progn
+      (remove-hook 'geben-session-enter-hook 'geben-full-frame-save)
+      (remove-hook 'geben-session-exit-hook 'geben-full-frame-restore))))
+
 (provide 'geben)
 
 ;;; geben.el ends here
