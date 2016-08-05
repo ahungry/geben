@@ -149,20 +149,8 @@ SUPPORT
 -------
 
 We always need your support - bug reports, feature requests,
-code/documents/design contributions, and donations.
+and code/documents/design contributions.
 
 To submit one or more of them, please visit our web site.
 
  https://github.com/ahungry/geben
-
-Also there are mailinglists.
-
-For usage questions:
- http://groups.google.com/group/geben-users
-
-For package contributions:
- http://groups.google.com/group/geben-dev
-
-Your posts will make GEBEN development progress.
-
-Thank you.
