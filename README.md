@@ -67,26 +67,7 @@ INSTALLATION
 
 [client side]
 
-1. Unpack GEBEN source code package and change directory to the
-   unpacked directory.
-
-<With GNU make command>
-a. run `make'(or `gmake', depends on your environment).
-b. If you are an administrator, Run: sudo make install
-b' Or Run: SITELISP=$HOME/path/to/install make install
-
-<Without GNU make command>
-a. Byte compile 'dbgp.el'.
-b. Byte compile `geben.el'.
-c. Copy `dbgp.elc', `geben.elc' and entire `tree-widget' directory to
-   any directory where Emacs can find.(Or add the path to `load-path'
-   list)
-
-<common>
-2. Insert autoload hooks into your .Emacs file.
-    -> (autoload 'geben "geben" "PHP Debugger on Emacs" t)
-3. Restart Emacs.
-
+- M-x package-install geben [![MELPA](https://melpa.org/packages/geben-badge.svg)](https://melpa.org/#/geben)
 
 DEBUGGING
 ---------
@@ -110,25 +91,26 @@ Here is an illustration on PHP debugging.
 5. Now the buffer is under the minor-mode 'geben-mode'.
    You can control the debugger with several keys.
 
-     spc     step into/step over
-     i       step into
-     o       step over
-     r       step out
-     g       run
-     c       run to cursor
-     b       set a breakpoint at a line
-     B       set a breakpoint interactively
-     u       unset a breakpoint at a line
-     U       clear all breakpoints
-     \C-c b  display breakpoint list
-     >       set redirection mode
-     \C-u t  change redirection mode
-     d       display backtrace
-     t       display backtrace
-     v       display context variables
-     \C-c f  visit script file
-     w       where
-     q       stop
+     - spc     step into/step over
+     - i       step into
+     - o       step over
+     - r       step out
+     - g       run
+     - c       run to cursor
+     - e       eval php expression
+     - b       set a breakpoint at a line
+     - B       set a breakpoint interactively
+     - u       unset a breakpoint at a line
+     - U       clear all breakpoints
+     - \C-c b  display breakpoint list
+     - >       set redirection mode
+     - \C-u t  change redirection mode
+     - d       display backtrace
+     - t       display backtrace
+     - v       display context variables
+     - \C-c f  visit script file
+     - w       where
+     - q       stop
 
    When you hit any unbound key of `geben-mode', GEBEN will ask you to
    edit the original script file. Say yes and GEBEN will attempts to
