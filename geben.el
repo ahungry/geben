@@ -3015,6 +3015,11 @@ If non-nil, GEBEN will query the user before removing all breakpoints."
   :group 'geben
   :type 'boolean)
 
+(defcustom geben-scroll-margin nil
+  "Controls the scroll margin of the geben mode."
+  :group 'geben
+  :type '(choice integer (const nil)))
+
 (defvar geben-mode-map nil)
 (unless geben-mode-map
   (setq geben-mode-map (make-sparse-keymap "geben"))
@@ -3099,7 +3104,9 @@ The geben-mode buffer commands:
   (set (make-local-variable 'command-error-function) #'geben-mode-read-only-handler)
   (let ((win (get-buffer-window (current-buffer))))
     (if win
-	(set-window-buffer win (current-buffer)))))
+	(set-window-buffer win (current-buffer))))
+  (when geben-scroll-margin
+    (setq-local scroll-margin geben-scroll-margin)))
 
 (add-hook 'geben-source-visit-hook 'geben-enter-geben-mode)
 
