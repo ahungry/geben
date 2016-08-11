@@ -3109,6 +3109,7 @@ The geben-mode buffer commands:
     (setq-local scroll-margin geben-scroll-margin)))
 
 (add-hook 'geben-source-visit-hook 'geben-enter-geben-mode)
+(add-hook 'geben-session-enter-hook 'geben-set-predefined-breakpoints t)
 
 (defun geben-mode-read-only-handler (data context caller)
   (if (eq 'buffer-read-only (car data))
@@ -3465,7 +3466,8 @@ removing all breakpoints."
     (when (or (not geben-query-on-clear-breakpoints)
 	      (let ((prompt "Clear all breakpoints? (y/N): "))
 		(memq (read-char prompt) '(?Y ?y))))
-      (geben-breakpoint-clear session))))
+      (geben-breakpoint-clear session)
+      (geben-clear-predefined-breakpoints))))
 
 (defun geben-show-breakpoint-list ()
   "Display breakpoint list.
@@ -3473,6 +3475,44 @@ The breakpoint list buffer is under `geben-breakpoint-list-mode'.
 Key mapping and other information is described its help page."
   (interactive)
   (geben-breakpoint-list-refresh t))
+
+(defcustom geben-predefined-breakpoints nil
+  "Controls the association list of predefined breakpoints.
+The key of each association specifies the file name of the
+breakpoint and the value speficies the line number."
+  :group 'geben
+  :type '(alist :key-type string :value-type integer))
+
+(defun geben-set-predefined-breakpoints (session)
+  "Set the predefined breakpoints as SESSION breakpoints."
+  (when geben-predefined-breakpoints
+    (dolist (bp geben-predefined-breakpoints)
+      (let ((local-path (car bp))
+            (line-number (cdr bp)))
+        (geben-set-breakpoint-common session nil
+                                     (geben-bp-make
+                                      session :line
+                                      :fileuri (or (geben-session-source-fileuri session local-path)
+                                                   (geben-session-source-fileuri session (file-truename local-path))
+                                                   (geben-source-fileuri session local-path))
+                                      :lineno line-number
+                                      :local-path local-path
+                                      :overlay t
+                                      :run-once nil))))))
+
+;;;###autoload
+(defun geben-add-current-line-to-predefined-breakpoints ()
+  "Add the current line to the predefined breakpoints."
+  (interactive)
+  (let ((path (buffer-file-name))
+        (line (line-number-at-pos)))
+    (add-to-list 'geben-predefined-breakpoints `(,path . ,line))
+    (message "%s line %s %s" path line "added to predefined breakpoints")))
+
+(defun geben-clear-predefined-breakpoints ()
+  "Clear all predefined breakpoints."
+  (interactive)
+  (setq geben-predefined-breakpoints nil))
 
 (defvar geben-eval-history nil)
 
