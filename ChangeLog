@@ -1,3 +1,28 @@
+2016-08-14 Matthew Carter  <m@ahungry.com>
+
+	* [ADD] New tag release 1.1.0
+	* [FIX] Remove reference to obsolete mailing list
+	* [FIX] Use user-emacs-directory over assumed ~/.emacs.d for
+	default when #'expand-file-name call fails
+
+	* Merged contributions from Syohei YOSHIDA <syohex@gmail.com>
+	- [FIX] cl-lib.el over cl.el cleanup
+	- [FIX] Load cl.el at compile time for using lexical let
+
+	* Merged contributions from ksjogo <jogo@kronberger-spiele.de>
+	- [ADD] New defcustom geben-show-redirect-buffers
+	- [ADD] User filtering for fileuris via defcustom
+	  geben-dbgp-session-user-filter-uri-regexp
+	- [FIX] Report user filter reason when using previous addition
+	- [ADD] Geben full frame mode via geben-full-frame-mode setting
+	- [ADD] Rudimentary markdown for README file
+
+	* Merged contributions from tijsmallaerts <tijs.mallaerts@gmail.com>
+	- [ADD] Option to control scroll margin via defcustom geben-scroll-margin
+	- [ADD] Predefined breakpoints can now be set outside of the
+	interactive session using geben-session-enter-hook, and setting
+	the defcustom geben-predefined-breakpoints to t
+
 2016-06-14 Matthew Carter  <m@ahungry.com>
 
 	* [CHG] Change defstruct call to cl-defstruct.
