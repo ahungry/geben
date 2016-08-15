@@ -295,7 +295,7 @@ Use the DATA-ENCODING appropriate to the CODING-SYSTEM."
 	  s)))))
 
 
-(defcustom geben-temporary-file-directory (expand-file-name "geben" "~/.emacs.d")
+(defcustom geben-temporary-file-directory (expand-file-name "geben" user-emacs-directory)
   "*Base directory path where GEBEN creates temporary files and directories."
   :group 'geben
   :type 'directory)
