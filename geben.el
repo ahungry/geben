@@ -3516,12 +3516,19 @@ breakpoint and the value speficies the line number."
 
 (defvar geben-eval-history nil)
 
+(defvar geben-minibuffer-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map minibuffer-local-map)
+    (define-key map (kbd "TAB") 'dabbrev-expand)
+    map)
+  "Minibuffer keymap used for reading expressions.")
+
 (defun geben-eval-expression (expr)
   "Evaluate a given string EXPR within the current execution context."
   (interactive
    (progn
      (list (read-from-minibuffer "Eval: "
-				 nil nil nil 'geben-eval-history))))
+				 nil geben-minibuffer-map nil 'geben-eval-history))))
   (geben-with-current-session session
     (geben-dbgp-command-eval session expr)))
 
