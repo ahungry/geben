@@ -112,29 +112,32 @@ Typically `pop-to-buffer' or `switch-to-buffer'."
 (defun geben-dbgp-display-window (buf)
   "Display a buffer BUF anywhere in a window, depends on the circumstance."
   (cond
+   (geben-full-frame-first-buffer
+    (setq geben-full-frame-first-buffer nil)
+    (switch-to-buffer buf))
    ((get-buffer-window buf)
     (select-window (get-buffer-window buf))
     (switch-to-buffer buf))
    ((or (eq 1 (count-windows))
-	(not (geben-dbgp-dynamic-property-buffer-visiblep)))
+        (not (geben-dbgp-dynamic-property-buffer-visiblep)))
     (funcall geben-display-window-function buf))
    (t
     (let ((candidates (make-vector 3 nil))
-	  (dynamic-p (geben-dbgp-dynamic-property-bufferp buf)))
+          (dynamic-p (geben-dbgp-dynamic-property-bufferp buf)))
       (cl-block finder
-	(walk-windows (lambda (window)
-			(if (geben-dbgp-dynamic-property-bufferp (window-buffer window))
-			    (if dynamic-p
-				(unless (aref candidates 1)
-				  (aset candidates 1 window)))
-			  (if (eq (selected-window) window)
-			      (aset candidates 2 window)
-			    (aset candidates 0 window)
-			    (cl-return-from finder))))))
+        (walk-windows (lambda (window)
+                        (if (geben-dbgp-dynamic-property-bufferp (window-buffer window))
+                            (if dynamic-p
+                                (unless (aref candidates 1)
+                                  (aset candidates 1 window)))
+                          (if (eq (selected-window) window)
+                              (aset candidates 2 window)
+                            (aset candidates 0 window)
+                            (cl-return-from finder))))))
       (select-window (or (aref candidates 0)
-			 (aref candidates 1)
-			 (aref candidates 2)
-			 (selected-window)))
+                         (aref candidates 1)
+                         (aref candidates 2)
+                         (selected-window)))
       (switch-to-buffer buf))))
   buf)
 
@@ -3750,12 +3753,16 @@ associating with the IDEKEY."
 
 ;; geben full-frame mode
 
+(defvar geben-full-frame-first-buffer nil)
+
 (defun geben-full-frame-save (session)
   (window-configuration-to-register 'geben-full-frame-register)
-  (delete-other-windows))
+  (delete-other-windows)
+  (setq geben-full-frame-first-buffer t))
 
 (defun geben-full-frame-restore (session)
-  (jump-to-register 'geben-full-frame-register t))
+  (jump-to-register 'geben-full-frame-register t)
+  (setq geben-full-frame-first-buffer nil))
 
 ;;;###autoload
 (define-minor-mode geben-full-frame-mode "" :global t
