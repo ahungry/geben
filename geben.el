@@ -2755,43 +2755,44 @@ The buffer commands are:
 ;; DBGp starter
 ;;==============================================================
 
-(defun geben-dbgp-start (port)
+(defun geben-dbgp-start (host port)
   "Create DBGp listeners at each CONNECTION-POINTS."
   (condition-case error-sexp
-      (let* ((result (dbgp-exec port
-				:session-accept 'geben-dbgp-session-accept-p
-				:session-init 'geben-dbgp-session-init
-				:session-filter 'geben-dbgp-session-filter
-				:session-sentinel 'geben-dbgp-session-sentinel))
-	     (listener (and (consp result)
-			    (car result))))
-	(when (processp listener)
-	  (message "Waiting for debug server to connect at port %s." port)))
+      (let* ((result (dbgp-exec host port
+                                :session-accept 'geben-dbgp-session-accept-p
+                                :session-init 'geben-dbgp-session-init
+                                :session-filter 'geben-dbgp-session-filter
+                                :session-sentinel 'geben-dbgp-session-sentinel))
+             (listener (and (consp result)
+                            (car result))))
+        (when (processp listener)
+          (message "Waiting for debug server to connect at port %s." port)))
     (error
      (beep)
      (read-char (format "[port %s] %s" port (cl-second error-sexp))
-		nil 3))))
+                nil 3))))
 
 (defun geben-dbgp-start-proxy (ip-or-addr port idekey ;;multi-session-p
-					  session-port)
+                                          session-port)
   "Create DBGp listeners at each CONNECTION-POINTS."
+  ;; FIXME: Add host possibility
   (condition-case error-sexp
       (let* ((result
-	      (dbgp-proxy-register-exec ip-or-addr port idekey nil ;; multi-session-p
-					session-port
-					:session-accept 'geben-dbgp-session-accept-p
-					:session-init 'geben-dbgp-session-init
-					:session-filter 'geben-dbgp-session-filter
-					:session-sentinel 'geben-dbgp-session-sentinel))
-	     (listener (and (consp result)
-			    (car result))))
-	(when (processp listener)
-	  (message "Waiting for debug server to connect.")))
+              (dbgp-proxy-register-exec ip-or-addr port idekey nil ;; multi-session-p
+                                        session-port
+                                        :session-accept 'geben-dbgp-session-accept-p
+                                        :session-init 'geben-dbgp-session-init
+                                        :session-filter 'geben-dbgp-session-filter
+                                        :session-sentinel 'geben-dbgp-session-sentinel))
+             (listener (and (consp result)
+                            (car result))))
+        (when (processp listener)
+          (message "Waiting for debug server to connect.")))
     (error
      (beep)
      (read-char (format "[proxy %s:%s-%s] %s"
-			ip-or-addr port idekey (cl-second error-sexp))
-		nil 3))))
+                        ip-or-addr port idekey (cl-second error-sexp))
+                nil 3))))
 
 (defun geben-dbgp-session-accept-p (proc)
   "Judge whether the SESSION is to be processed or to be terminated."
@@ -3620,6 +3621,13 @@ from \`redirect', \`intercept' and \`disabled'."
   :group 'geben
   :type 'integer)
 
+(defcustom geben-dbgp-default-host "0.0.0.0"
+  "Default host to listen a new DBGp connection.
+
+ Default is 0.0.0.0 to catch all connections the user might receive. "
+  :group 'geben
+  :type 'string)
+
 (defcustom geben-dbgp-default-proxy '("127.0.0.1" 9001 "default" nil t)
   "Default setting for a new DBGp proxy connection.
 
@@ -3668,13 +3676,9 @@ described its help page."
   (interactive "p")
   (cl-case args
     (1
-     (geben-dbgp-start geben-dbgp-default-port))
+     (geben-dbgp-start geben-dbgp-default-host geben-dbgp-default-port))
     (4
-     (let ((default (or (car dbgp-listener-port-history)
-			geben-dbgp-default-port
-			(default-value 'geben-dbgp-default-port))))
-       (geben-dbgp-start (dbgp-read-integer (format "Listen port(default %s): " default)
-					    default 'dbgp-listener-port-history))))
+     (geben-dbgp-start (dbgp-read-host) (dbgp-read-port)))
     (16
      (call-interactively 'geben-proxy))
     (64

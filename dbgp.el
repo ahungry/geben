@@ -214,6 +214,7 @@ The session process is alive until the session is disconnected.
 			session process.")
 
 (defvar dbgp-listener-port-history nil)
+(defvar dbgp-listener-address-history nil)
 (defvar dbgp-proxy-address-history nil)
 (defvar dbgp-proxy-port-history nil)
 (defvar dbgp-proxy-idekey-history nil)
@@ -278,6 +279,27 @@ See `read-from-minibuffer' for details of HISTORY argument."
 	 (set history (cons n (remq n (symbol-value history)))))
     n))
 
+(defun dbgp-read-port (&optional preset)
+  (interactive)
+  (let ((default (or
+                  (car dbgp-listener-port-history)
+                  preset
+                  (default-value 'geben-dbgp-default-port))))
+    (dbgp-read-integer (format "Listen port(default %s): " default) default 'dbgp-listener-port-history)))
+
+(defun dbgp-read-host ()
+  (interactive)
+  (let* ((addrs (append  '("0.0.0.0")  (mapcar (lambda (intf)
+                                                 (format-network-address (cdr intf) t))
+                                               (network-interface-list))))
+        (addr-default (or
+                       (car dbgp-listener-address-history)
+                       (and (member "127.0.0.1" addrs) "127.0.0.1")
+                       (car addrs))))
+        (unless addrs
+          (error "This machine has no network interface to bind."))
+        (completing-read  (format "Listener address to bind: ") addrs nil t nil 'dbgp-listener-address-history)))
+
 ;;--------------------------------------------------------------
 ;; DBGp listener start/stop
 ;;--------------------------------------------------------------
@@ -288,59 +310,47 @@ See `read-from-minibuffer' for details of HISTORY argument."
 	   dbgp-listeners))
 
 ;;;###autoload
-(defun dbgp-start (port)
+(defun dbgp-start (host port)
   "Start a new DBGp listener listening to PORT."
-  (interactive (let (;;(addrs (mapcar (lambda (intf)
-		     ;;		      (format-network-address (cdar (network-interface-list)) t))
-		     ;;		    (network-interface-list)))
-		     ;;(addr-default (or (car dbgp-listener-address-history)
-		     ;;		       (and (member "127.0.0.1" addrs)
-		     ;;			    "127.0.0.1")
-		     ;;		       (car addrs)))
-		     (port-default (or (car dbgp-listener-port-history)
-				       9000)))
-		 ;;		 (or addrs
-		 ;;		     (error "This machine has no network interface to bind."))
-		 (list
-		  ;;		  (completing-read (format "Listener address to bind(default %s): " default)
-		  ;;				   addrs nil t
-		  ;;				   'dbgp-listener-address-history default)
-		  (dbgp-read-integer (format "Listen port(default %s): " port-default)
-				     port-default 'dbgp-listener-port-history))))
-  (let ((result (dbgp-exec port
-			   :session-accept 'dbgp-default-session-accept-p
-			   :session-init 'dbgp-default-session-init
-			   :session-filter 'dbgp-default-session-filter
-			   :session-sentinel 'dbgp-default-session-sentinel)))
+  (interactive
+   (list
+    (dbgp-read-host)
+    (dbgp-read-port)))
+  (let ((result (dbgp-exec host port
+                           :session-accept 'dbgp-default-session-accept-p
+                           :session-init 'dbgp-default-session-init
+                           :session-filter 'dbgp-default-session-filter
+                           :session-sentinel 'dbgp-default-session-sentinel)))
     (when (called-interactively-p 'interactive)
       (message (cdr result)))
     result))
 
 ;;;###autoload
-(defun dbgp-exec (port &rest session-params)
+(defun dbgp-exec (host port &rest session-params)
   "Start a new DBGp listener listening to PORT.
 Set the process up with SESSION-PARAMS."
   (if (dbgp-listener-alive-p port)
       (cons (dbgp-listener-find port)
-	    (format "The DBGp listener for %d has already been started." port))
+            (format "The DBGp listener for %d has already been started." port))
     (let ((listener (make-network-process :name (dbgp-make-listner-name port)
-					  :server 1
-					  :service port
-					  :family 'ipv4
-					  :nowait t
-					  :noquery t
-					  :filter 'dbgp-comint-setup
-					  :sentinel 'dbgp-listener-sentinel
-					  :log 'dbgp-listener-log)))
+                                          :host host
+                                          :server 1
+                                          :service port
+                                          :family 'ipv4
+                                          :nowait t
+                                          :noquery t
+                                          :filter 'dbgp-comint-setup
+                                          :sentinel 'dbgp-listener-sentinel
+                                          :log 'dbgp-listener-log)))
       (unless listener
-	(error "Failed to create DBGp listener for port %d" port))
+        (error "Failed to create DBGp listener for port %d" port))
       (dbgp-plist-put listener :listener listener)
       (and session-params
-	   (nconc (process-plist listener) session-params))
+           (nconc (process-plist listener) session-params))
       (setq dbgp-listeners (cons listener
-				 (remq (dbgp-listener-find port) dbgp-listeners)))
+                                 (remq (dbgp-listener-find port) dbgp-listeners)))
       (cons listener
-	    (format "The DBGp listener for %d is started." port)))))
+            (format "The DBGp listener for %d is started." port)))))
 
 (defun dbgp-stop (port &optional include-proxy)
   "Stop the DBGp listener listening to PORT.
