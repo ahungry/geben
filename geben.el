@@ -1996,6 +1996,11 @@ the file."
 (defvar geben-context-loading nil)
 (defvar geben-context-property-tree-fill-children-hook 'geben-context-tree-children-fill)
 
+(defvar geben-expanded-context-variables '())
+(add-hook 'tree-widget-after-toggle-functions 'geben-tree-widget-notify)
+
+(add-hook 'geben-after-eval-expression 'geben-context-mode-refresh)
+
 (defun geben-session-context-init (session)
   (setf (geben-session-context session) (geben-context-make)))
 (add-hook 'geben-session-enter-hook #'geben-session-context-init)
@@ -2216,11 +2221,13 @@ Child nodes can be short for :property property of TREE."
 					value)
 				      'face (plist-get typeinfo :value-face))))))
     (if (geben-context-property-has-children property)
-	(list 'tree-widget
-	      :tag tag
-	      :property property
-	      :expander 'geben-context-property-tree-expand
-	      :expander-p 'geben-context-property-tree-expand-p)
+        (list 'tree-widget
+              :tag tag
+              :open (member (geben-context-property-attribute property 'address)
+                            geben-expanded-context-variables)
+              :property property
+              :expander 'geben-context-property-tree-expand
+              :expander-p 'geben-context-property-tree-expand-p)
       (list 'item :tag (concat "   " tag)))))
 
 (defun geben-context-property-tree-context-id (tree)
@@ -2281,24 +2288,25 @@ After fetching it calls CALLBACK function."
 	      (funcall callback session))))))))
 
 (defun geben-context-fill-buffer (session)
-  "Fill the context buffer with locally stored context list."
+  "Fill the context buffer with locally stored context list.
+Example: Locals, Superglobals"
   (let ((buf (geben-session-context-buffer-get session)))
     (when buf
       (with-current-buffer buf
-	(let ((inhibit-read-only t)
-	      (inhibit-modification-hooks t))
-	  (widen)
-	  (erase-buffer)
-	  (dolist (context-name (geben-session-context-names session))
-	    (let ((new (geben-session-context-list-new session (cdr context-name))))
-	      (apply 'widget-create
-		     'tree-widget
-		     :tag (car context-name)
-		     :context-id (cdr context-name)
-		     :open t
-		     (mapcar #'geben-context-property-tree-create-node new))))
-	  (widget-setup))
-	(goto-char (point-min))))))
+        (let ((inhibit-read-only t)
+              (inhibit-modification-hooks t))
+          (widen)
+          (erase-buffer)
+          (dolist (context-name (geben-session-context-names session))
+            (let ((new (geben-session-context-list-new session (cdr context-name))))
+              (apply 'widget-create
+                     'tree-widget
+                     :tag (car context-name)
+                     :context-id (cdr context-name)
+                     :open t
+                     (mapcar #'geben-context-property-tree-create-node new))))
+          (widget-setup))
+        (goto-char (point-min))))))
 
 (defun geben-context-tree-children-fill (tree &optional tid-save)
   (geben-with-current-session session
@@ -2342,6 +2350,15 @@ After fetching it calls CALLBACK function."
 						  (car (xml-get-children msg 'property)))
 	      (geben-context-tree-children-fill tree
 						tid-save))))))))
+
+(defun geben-tree-widget-notify (widget-tree)
+  "Takes WIDGET-TREE and gathers the address of the variable just expanded/collapsed,
+ if it was expanded it gets added to `geben-expanded-context-variables' and if it was collapsed
+ it gets removed."
+  (let ((var-address (geben-context-property-attribute (widget-get widget-tree :property) 'address)))
+    (if (widget-get widget-tree :open)
+        (add-to-list 'geben-expanded-context-variables var-address)
+      (setq geben-expanded-context-variables (cl-remove var-address geben-expanded-context-variables :test 'string-equal)))))
 
 (defun geben-context-tree-children-append (session tid-save tree property)
   (if (eq tid-save (geben-session-context-tid session))
@@ -3543,9 +3560,10 @@ breakpoint and the value speficies the line number."
   (interactive
    (progn
      (list (read-from-minibuffer "Eval: "
-				 nil geben-minibuffer-map nil 'geben-eval-history))))
+                                 nil geben-minibuffer-map nil 'geben-eval-history))))
   (geben-with-current-session session
-    (geben-dbgp-command-eval session expr)))
+    (geben-dbgp-command-eval session expr))
+  (run-hooks 'geben-after-eval-expression))
 
 (defun geben-eval-current-word ()
   "Evaluate a word at where the cursor is pointing."
