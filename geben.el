@@ -500,17 +500,27 @@ at the entry line of the script."
 (defsubst geben-session-buffer-visible-p (session format-string)
   (let ((buf (get-buffer (geben-session-buffer-name session format-string))))
     (and buf
-	 (buffer-live-p buf)
-	 (get-buffer-window buf))))
+         (buffer-live-p buf)
+         (get-buffer-window buf))))
+
+(defun geben-kill-buffers (&rest args)
+  "Kills all buffers whose name start with *GEBEN.
+ ARGS is so it can be used for `geben-session-exit-hook'.
+
+ TODO: Standard buffer names so we don't have to do a string match."
+  (mapc (lambda(buffer)
+          (if (string-prefix-p "*GEBEN" (buffer-name buffer))
+              (kill-buffer buffer)))
+        (buffer-list)))
 
 ;; temporary directory
 
 (defun geben-session-tempdir-setup (session)
   "Setup temporary directory for SESSION."
   (let* ((proc (geben-session-process session))
-	 (gebendir (file-truename geben-temporary-file-directory))
-	 (leafdir (format "%d" (cl-second (process-contact proc))))
-	 (tempdir (expand-file-name leafdir gebendir)))
+         (gebendir (file-truename geben-temporary-file-directory))
+         (leafdir (format "%d" (cl-second (process-contact proc))))
+         (tempdir (expand-file-name leafdir gebendir)))
     (unless (file-directory-p gebendir)
       (make-directory gebendir t)
       (set-file-modes gebendir #o1777))
@@ -972,10 +982,11 @@ A source object forms a property list with three properties
 (defun geben-session-source-release (session)
   "Release source objects."
   (maphash (lambda (fileuri source)
-	     (geben-source-release source))
-	   (geben-session-source session)))
+             (geben-source-release source))
+           (geben-session-source session)))
 
 (add-hook 'geben-session-exit-hook #'geben-session-source-release)
+(add-hook 'geben-session-exit-hook #'geben-kill-buffers)
 
 (defsubst geben-session-source-get (session fileuri)
   (gethash fileuri (geben-session-source session)))
