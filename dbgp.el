@@ -779,78 +779,79 @@ If ECHO-P is t, echo the input as well."
 (defun dbgp-session-filter (proc string)
   "Given process PROC and string STRING, this is where the actual buffer insertion is done."
   (let ((buf (process-buffer proc))
-	(listener (dbgp-listener-get proc))
-	(session-filter (dbgp-plist-get proc :session-filter))
-	output process-window chunks)
+        (listener (dbgp-listener-get proc))
+        (session-filter (dbgp-plist-get proc :session-filter))
+        output process-window chunks)
     (cl-block dbgp-session-filter
-	   (unless (buffer-live-p buf)
-	     (cl-return-from dbgp-session-filter))
+      (unless (buffer-live-p buf)
+        (cl-return-from dbgp-session-filter))
 
-	   (with-current-buffer buf
-	     (when dbgp-filter-defer-flag
-	       ;; If we can't process any text now,
-	       ;; save it for later.
-	       (setq dbgp-filter-defer-faced t
-		     dbgp-filter-pending-text (if dbgp-filter-pending-text
-						  (concat dbgp-filter-pending-text string)
-						string))
-	       (cl-return-from dbgp-session-filter))
+      (with-current-buffer buf
+        (when dbgp-filter-defer-flag
+          ;; If we can't process any text now,
+          ;; save it for later.
+          (setq dbgp-filter-defer-faced t
+                dbgp-filter-pending-text (if dbgp-filter-pending-text
+                                             (concat dbgp-filter-pending-text string)
+                                           string))
+          (cl-return-from dbgp-session-filter))
 
-	     ;; If we have to ask a question during the processing,
-	     ;; defer any additional text that comes from the debugger
-	     ;; during that time.
-	     (setq dbgp-filter-defer-flag t)
-	     (setq dbgp-filter-defer-faced nil)
+        ;; If we have to ask a question during the processing,
+        ;; defer any additional text that comes from the debugger
+        ;; during that time.
+        (setq dbgp-filter-defer-flag t)
+        (setq dbgp-filter-defer-faced nil)
 
-	     (ignore-errors
-	      ;; Process now any text we previously saved up.
-	      (setq dbgp-filter-pending-text (if dbgp-filter-pending-text
-						 (concat dbgp-filter-pending-text string)
-					       string))
-	      (setq chunks (dbgp-session-response-to-chunk))
+        (ignore-errors
+          ;; Process now any text we previously saved up.
+          (setq dbgp-filter-pending-text (if dbgp-filter-pending-text
+                                             (concat dbgp-filter-pending-text string)
+                                           string))
+          (setq chunks (dbgp-session-response-to-chunk))
 
-	      ;; If we have been so requested, delete the debugger prompt.
-	      (if (marker-buffer dbgp-delete-prompt-marker)
-		  (save-restriction
-		    (widen)
-		    (let ((inhibit-read-only t))
-		      (delete-region (process-mark proc)
-				     dbgp-delete-prompt-marker)
-		      (comint-update-fence)
-		      (set-marker dbgp-delete-prompt-marker nil))))
+          ;; If we have been so requested, delete the debugger prompt.
+          (if (marker-buffer dbgp-delete-prompt-marker)
+              (save-restriction
+                (widen)
+                (let ((inhibit-read-only t))
+                  (delete-region (process-mark proc)
+                                 dbgp-delete-prompt-marker)
+                  (comint-update-fence)
+                  (set-marker dbgp-delete-prompt-marker nil))))
 
-	      ;; Save the process output, checking for source file markers.
-	      (and chunks
-		   (setq output
-			 (concat
-			  (mapconcat (if (functionp session-filter)
-					 (lambda (chunk) (funcall session-filter proc chunk))
-				       #'quote)
-				     chunks
-				     "\n")
-			  "\n"))
-		   (setq output
-			 (concat output
-				 (if dbgp-filter-input-list
-				     (mapconcat (lambda (input)
-						  (concat
-						   (propertize dbgp-command-prompt
-							       'font-lock-face 'comint-highlight-prompt)
-						   (propertize (concat input "\n")
-							       'font-lock-face 'comint-highlight-input)))
-						dbgp-filter-input-list
-						"")
-				   dbgp-command-prompt)))
-		   (setq dbgp-filter-input-list nil))))
-	   ;; Let the comint filter do the actual insertion.
-	   ;; That lets us inherit various comint features.
-	   (and output
-	       (ignore-errors
-		(comint-output-filter proc output))))
-    (if (with-current-buffer buf
-	  (setq dbgp-filter-defer-flag nil)
-	  dbgp-filter-defer-faced)
-	(dbgp-session-filter proc ""))))
+          ;; Save the process output, checking for source file markers.
+          (and chunks
+               (setq output
+                     (concat
+                      (mapconcat (if (functionp session-filter)
+                                     (lambda (chunk) (funcall session-filter proc chunk))
+                                   #'quote)
+                                 chunks
+                                 "\n")
+                      "\n"))
+               (setq output
+                     (concat output
+                             (if dbgp-filter-input-list
+                                 (mapconcat (lambda (input)
+                                              (concat
+                                               (propertize dbgp-command-prompt
+                                                           'font-lock-face 'comint-highlight-prompt)
+                                               (propertize (concat input "\n")
+                                                           'font-lock-face 'comint-highlight-input)))
+                                            dbgp-filter-input-list
+                                            "")
+                               dbgp-command-prompt)))
+               (setq dbgp-filter-input-list nil))))
+      ;; Let the comint filter do the actual insertion.
+      ;; That lets us inherit various comint features.
+      (and output
+           (ignore-errors
+             (comint-output-filter proc output))))
+    (when (and (buffer-live-p buf)
+               (with-current-buffer buf
+                 (setq dbgp-filter-defer-flag nil)
+                 dbgp-filter-defer-faced))
+      (dbgp-session-filter proc ""))))
 
 (defun dbgp-session-response-to-chunk ()
   (let* ((string dbgp-filter-pending-text)
