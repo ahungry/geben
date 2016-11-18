@@ -2592,22 +2592,24 @@ The buffer commands are:
   (interactive (list last-nonmenu-event))
   (geben-with-current-session session
     (let ((stack-frame
-	   (if (or (null event)
-		   (not (listp event)))
-	       ;; Actually `event-end' works correctly with a nil argument as
-	       ;; well, so we could dispense with this test, but let's not
-	       ;; rely on this undocumented behavior.
-	       (get-text-property (point) 'geben-stack-frame)
-	     (with-current-buffer (window-buffer (posn-window (event-end event)))
-	       (save-excursion
-		 (goto-char (posn-point (event-end event)))
-		 (get-text-property (point) 'geben-stack-frame)))))
-	  same-window-buffer-names
-	  same-window-regexps)
+           (if (or (null event)
+                   (not (listp event)))
+               ;; Actually `event-end' works correctly with a nil argument as
+               ;; well, so we could dispense with this test, but let's not
+               ;; rely on this undocumented behavior.
+               (get-text-property (point) 'geben-stack-frame)
+             (with-current-buffer (window-buffer (posn-window (event-end event)))
+               (save-excursion
+                 (goto-char (posn-point (event-end event)))
+                 (get-text-property (point) 'geben-stack-frame)))))
+          same-window-buffer-names
+          same-window-regexps)
       (when stack-frame
-	(geben-session-cursor-update session
-				     (plist-get stack-frame :fileuri)
-				     (plist-get stack-frame :lineno))))))
+        (geben-session-cursor-update session
+                                     (plist-get stack-frame :fileuri)
+                                     (plist-get stack-frame :lineno))
+        (run-hook-with-args 'geben-dbgp-stack-update-hook
+                            session (plist-get stack-frame :level))))))
 
 (defun geben-backtrace-mode-help ()
   "Display description and key bindings of `geben-backtrace-mode'."
