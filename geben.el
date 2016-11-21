@@ -63,7 +63,7 @@
 
 (eval-when-compile
   (when (or (not (boundp 'emacs-version))
-	    (string< emacs-version "24"))
+            (string< emacs-version "24"))
     (error (concat "geben.el: This package requires Emacs 24 or later.")))
   (require 'cl))
 
@@ -150,8 +150,8 @@ Typically `pop-to-buffer' or `switch-to-buffer'."
   "Check whether any window displays any property buffer."
   (cl-block walk-loop
     (walk-windows (lambda (window)
-		    (if (geben-dbgp-dynamic-property-bufferp (window-buffer window))
-			(cl-return-from walk-loop t))))))
+                    (if (geben-dbgp-dynamic-property-bufferp (window-buffer window))
+                        (cl-return-from walk-loop t))))))
 
 
 ;;==============================================================
@@ -166,7 +166,7 @@ Typically `pop-to-buffer' or `switch-to-buffer'."
 
 (defsubst geben-flatten (x)
   "Make cons X to a flat list."
-    (geben-rec x nil))
+  (geben-rec x nil))
 
 (defsubst geben-what-line (&optional pos)
   "Get the number of the line in which POS is located.
@@ -180,20 +180,20 @@ If POS is omitted, then the current position is used."
 
 (defmacro geben-plist-push (plist prop value)
   `(let* ((plist ,plist)
-	  (l (plist-get plist ,prop)))
+          (l (plist-get plist ,prop)))
      (cond
       ((consp l)
        (plist-put plist ,prop
-		  (cons ,value (plist-get plist ,prop))))
+                  (cons ,value (plist-get plist ,prop))))
       ((null l)
        (plist-put plist ,prop (list ,value)))
       (t
        (error "geben-plist-push: cannot add value; type of prop `%s' is not `list' but `%s'."
-	      ,prop (type-of ,value))))))
+              ,prop (type-of ,value))))))
 
 (defmacro geben-plist-append (plist prop value)
   `(let* ((plist ,plist)
-	  (l (plist-get plist ,prop)))
+          (l (plist-get plist ,prop)))
      (cond
       ((consp l)
        (nconc l (list ,value)))
@@ -201,40 +201,40 @@ If POS is omitted, then the current position is used."
        (plist-put plist ,prop (list ,value)))
       (t
        (error "geben-plist-add: cannot add value; type of prop `%s' is not `list' but `%s'."
-	      ,prop (type-of ,value))))))
+              ,prop (type-of ,value))))))
 
 (defmacro geben-lexical-bind (bindings &rest body)
   (declare (indent 1)
-	   (debug (sexp &rest form)))
+           (debug (sexp &rest form)))
   (macroexpand-all
    (nconc
     (list 'lexical-let (mapcar (lambda (arg)
-				 (list arg arg))
-			       bindings))
+                                 (list arg arg))
+                               bindings))
     body)))
 
 (defun geben-remove-directory-tree (basedir)
   (ignore-errors
     (mapc (lambda (path)
-	    (cond
-	     ((or (file-symlink-p path)
-		  (file-regular-p path))
-	      (delete-file path))
-	     ((file-directory-p path)
-	      (let ((name (file-name-nondirectory path)))
-		(or (equal "." name)
-		    (equal ".." name)
-		    (geben-remove-directory-tree path))))))
-	  (directory-files basedir t nil t))
+            (cond
+             ((or (file-symlink-p path)
+                  (file-regular-p path))
+              (delete-file path))
+             ((file-directory-p path)
+              (let ((name (file-name-nondirectory path)))
+                (or (equal "." name)
+                    (equal ".." name)
+                    (geben-remove-directory-tree path))))))
+          (directory-files basedir t nil t))
     (delete-directory basedir)))
 
 (defun geben-remote-p (ip)
   "Test whether IP refers a remote system."
   (not (or (equal ip "127.0.0.1")
-	   (and (fboundp 'network-interface-list)
-		(member ip (mapcar (lambda (addr)
-				     (format-network-address (cdr addr) t))
-				   (network-interface-list)))))))
+           (and (fboundp 'network-interface-list)
+                (member ip (mapcar (lambda (addr)
+                                     (format-network-address (cdr addr) t))
+                                   (network-interface-list)))))))
 
 ;;--------------------------------------------------------------
 ;;  cross emacs overlay definitions
@@ -255,9 +255,9 @@ Optionally, in buffer BUF."
       (goto-line lineno)
       (beginning-of-line)
       (make-overlay (point)
-		    (save-excursion
-		      (forward-line) (point))
-		    nil t nil))))
+                    (save-excursion
+                      (forward-line) (point))
+                    nil t nil))))
 
 
 ;;==============================================================
@@ -266,20 +266,20 @@ Optionally, in buffer BUF."
 
 (cl-defmacro geben-dbgp-sequence (cmd &rest callback)
   (declare (indent 1)
-	   (debug (form &rest form)))
+           (debug (form &rest form)))
   (list 'progn
-	(list 'geben-plist-append cmd
-	      :callback (car callback))))
+        (list 'geben-plist-append cmd
+              :callback (car callback))))
 
 (cl-defmacro geben-dbgp-sequence-bind (bindings cmd callback)
   (declare (indent 1)
-	   (debug (sexp form lambda-expr)))
+           (debug (sexp form lambda-expr)))
   (macroexpand-all
    (list 'progn
-	 (list 'geben-plist-append cmd
-	       :callback (if bindings
-			     (list 'geben-lexical-bind bindings callback)
-			   callback)))))
+         (list 'geben-plist-append cmd
+               :callback (if bindings
+                             (list 'geben-lexical-bind bindings callback)
+                           callback)))))
 
 (defun geben-dbgp-decode-string (string data-encoding coding-system)
   "Decode encoded STRING.
@@ -287,15 +287,15 @@ Use the DATA-ENCODING appropriate to the CODING-SYSTEM."
   (when string
     (let ((s string))
       (when (consp s)
-	(setq s (car s)))
+        (setq s (car s)))
       (when (stringp s)
-	(setq s (cond
-		 ((equal "base64" data-encoding)
-		  (base64-decode-string s))
-		 (t s)))
-	(if coding-system
-	    (decode-coding-string s coding-system)
-	  s)))))
+        (setq s (cond
+                 ((equal "base64" data-encoding)
+                  (base64-decode-string s))
+                 (t s)))
+        (if coding-system
+            (decode-coding-string s coding-system)
+          s)))))
 
 
 (defcustom geben-temporary-file-directory (expand-file-name "geben" user-emacs-directory)
@@ -308,20 +308,20 @@ Use the DATA-ENCODING appropriate to the CODING-SYSTEM."
 
 (defun geben-storage-load ()
   (let ((storage-path (expand-file-name ".storage"
-					geben-temporary-file-directory)))
+                                        geben-temporary-file-directory)))
     (when (file-exists-p storage-path)
       (ignore-errors
-	(with-temp-buffer
-	  (insert-file-contents storage-path)
-	  (setq geben-storages (read (buffer-string))))))))
+        (with-temp-buffer
+          (insert-file-contents storage-path)
+          (setq geben-storages (read (buffer-string))))))))
 
 (defun geben-storage-save ()
   (let ((storage-path (expand-file-name ".storage"
-					geben-temporary-file-directory)))
+                                        geben-temporary-file-directory)))
     (with-temp-buffer
       (pp geben-storages (current-buffer))
       (with-temp-message ""
-	(write-region (point-min) (point-max) storage-path)))))
+        (write-region (point-min) (point-max) storage-path)))))
 
 
 ;;==============================================================
@@ -365,8 +365,8 @@ at the entry line of the script."
   :type 'boolean)
 
 (cl-defstruct (geben-session
-	    (:constructor nil)
-	    (:constructor geben-session-make))
+               (:constructor nil)
+               (:constructor geben-session-make))
   "Represent a DBGp protocol connection session."
   storage
   process
@@ -389,11 +389,11 @@ at the entry line of the script."
 
 (defmacro geben-with-current-session (binding &rest body)
   (declare (indent 1)
-	   (debug (symbolp &rest form)))
+           (debug (symbolp &rest form)))
   (macroexpand-all
    `(let ((,binding geben-current-session))
       (when ,binding
-	,@body))))
+        ,@body))))
 
 ;; initialize
 
@@ -402,29 +402,29 @@ at the entry line of the script."
   (geben-session-tempdir-setup session)
   (setf (geben-session-initmsg session) init-msg)
   (setf (geben-session-xdebug-p session)
-	(equal "Xdebug" (car (xml-node-children
-			      (car (xml-get-children init-msg 'engine))))))
+        (equal "Xdebug" (car (xml-node-children
+                              (car (xml-get-children init-msg 'engine))))))
   (setf (geben-session-language session)
-	(let ((lang (xml-get-attribute-or-nil init-msg 'language)))
-	  (and lang
-	       (intern (concat ":" (downcase lang))))))
+        (let ((lang (xml-get-attribute-or-nil init-msg 'language)))
+          (and lang
+               (intern (concat ":" (downcase lang))))))
   (setf (geben-session-storage session) (or (geben-session-storage-find session)
-					    (geben-session-storage-create session)))
+                                            (geben-session-storage-create session)))
   (run-hook-with-args 'geben-session-enter-hook session))
 
 (defun geben-session-storage-create (session)
   "Create the necessary storage for the SESSION."
   (let* ((initmsg (geben-session-initmsg session))
-	 (process (geben-session-process session))
-	 (listener (dbgp-plist-get process :listener))
-	 (storage (if (dbgp-proxy-p process)
-		      (list :proxy t
-			    :addr (xml-get-attribute initmsg 'hostname)
-			    :idekey (xml-get-attribute initmsg 'idekey))
-		    (list :proxy nil
-			  :port (cl-second (process-contact listener))))))
+         (process (geben-session-process session))
+         (listener (dbgp-plist-get process :listener))
+         (storage (if (dbgp-proxy-p process)
+                      (list :proxy t
+                            :addr (xml-get-attribute initmsg 'hostname)
+                            :idekey (xml-get-attribute initmsg 'idekey))
+                    (list :proxy nil
+                          :port (cl-second (process-contact listener))))))
     (nconc storage (list :language (geben-session-language session)
-			 :fileuri (xml-get-attribute initmsg 'fileuri)))
+                         :fileuri (xml-get-attribute initmsg 'fileuri)))
     (add-to-list 'geben-storages storage)
     storage))
 
@@ -433,24 +433,24 @@ at the entry line of the script."
     (geben-storage-load)
     (setq geben-storage-loaded t))
   (let* ((initmsg (geben-session-initmsg session))
-	 (addr (xml-get-attribute initmsg 'hostname))
-	 (fileuri (xml-get-attribute initmsg 'fileuri))
-	 (idekey (xml-get-attribute initmsg 'idekey))
-	 (process (geben-session-process session))
-	 (listener (dbgp-plist-get process :listener))
-	 (proxy-p (dbgp-proxy-p listener))
-	 (port (cl-second (process-contact listener))))
+         (addr (xml-get-attribute initmsg 'hostname))
+         (fileuri (xml-get-attribute initmsg 'fileuri))
+         (idekey (xml-get-attribute initmsg 'idekey))
+         (process (geben-session-process session))
+         (listener (dbgp-plist-get process :listener))
+         (proxy-p (dbgp-proxy-p listener))
+         (port (cl-second (process-contact listener))))
     (cl-find-if (lambda (storage)
-		  (and (eq (not proxy-p)
-			   (not (plist-get storage :proxy)))
-		       (eq (geben-session-language session)
-			   (plist-get storage :language))
-		       (equal fileuri (plist-get storage :fileuri))
-		       (if proxy-p
-			   (and (equal addr (plist-get storage :addr))
-				(equal idekey (plist-get storage :idekey)))
-			 (eq port (plist-get storage :port)))))
-		geben-storages)))
+                  (and (eq (not proxy-p)
+                           (not (plist-get storage :proxy)))
+                       (eq (geben-session-language session)
+                           (plist-get storage :language))
+                       (equal fileuri (plist-get storage :fileuri))
+                       (if proxy-p
+                           (and (equal addr (plist-get storage :addr))
+                                (equal idekey (plist-get storage :idekey)))
+                         (eq port (plist-get storage :port)))))
+                geben-storages)))
 
 (defsubst geben-session-release (session)
   "Initialize a SESSION of a process PROC."
@@ -464,7 +464,7 @@ at the entry line of the script."
   "Evaluate the active state of SESSION.  If active, will return t, otherwise nil."
   (let ((proc (geben-session-process session)))
     (and (processp proc)
-	 (eq 'open (process-status proc)))))
+         (eq 'open (process-status proc)))))
 
 ;; tid
 
@@ -479,14 +479,14 @@ at the entry line of the script."
 (defsubst geben-session-buffer-name (session format-string)
   "Return the buffer name for SESSION, formatted according to FORMAT-STRING."
   (let* ((proc (geben-session-process session))
-	 (idekey (plist-get (dbgp-proxy-get proc) :idekey)))
+         (idekey (plist-get (dbgp-proxy-get proc) :idekey)))
     (format format-string
-	    (concat (if idekey
-			(format "%s:" idekey)
-		      "")
-		    (format "%s:%s"
-			    (dbgp-ip-get proc)
-			    (dbgp-port-get (dbgp-listener-get proc)))))))
+            (concat (if idekey
+                        (format "%s:" idekey)
+                      "")
+                    (format "%s:%s"
+                            (dbgp-ip-get proc)
+                            (dbgp-port-get (dbgp-listener-get proc)))))))
 
 (defsubst geben-session-buffer (session format-string)
   (get-buffer-create (geben-session-buffer-name session format-string)))
@@ -537,7 +537,7 @@ at the entry line of the script."
 (defsubst geben-session-ip-get (session)
   "Get ip address of the host server in SESSION."
   (let* ((proc (geben-session-process session))
-	 (listener (dbgp-listener-get proc)))
+         (listener (dbgp-listener-get proc)))
     (format-network-address (dbgp-ip-get proc) t)))
 
 (defun geben-session-remote-p (session)
@@ -551,24 +551,24 @@ at the entry line of the script."
 
 (defmacro geben-cmd-param-for (key)
   `(plist-get '(:depth "-d"
-		       :context-id "-c"
-		       :max-data-size "-m"
-		       :type "-t"
-		       :page "-p"
-		       :key "k"
-		       :address "-a"
-		       :name "-n"
-		       :fileuri "-f"
-		       :lineno "-n"
-		       :class "-a"
-		       :function "-m"
-		       :state "-s"
-		       :exception "-x"
-		       :hit-value "-h"
-		       :hit-condition "-o"
-		       :run-once "-r"
-		       :expression "--")
-	      ,key))
+                       :context-id "-c"
+                       :max-data-size "-m"
+                       :type "-t"
+                       :page "-p"
+                       :key "k"
+                       :address "-a"
+                       :name "-n"
+                       :fileuri "-f"
+                       :lineno "-n"
+                       :class "-a"
+                       :function "-m"
+                       :state "-s"
+                       :exception "-x"
+                       :hit-value "-h"
+                       :hit-condition "-o"
+                       :run-once "-r"
+                       :expression "--")
+              ,key))
 
 (defsubst geben-cmd-param-get (cmd flag)
   "For CMD, get FLAG's parameter used.
@@ -579,45 +579,45 @@ For a DBGp command \`stack_get -i 1 -d 2\',
 (defun geben-cmd-expand (cmd)
   "Build a send command CMD string for DBGp protocol."
   (mapconcat #'(lambda (x)
-		 (cond ((stringp x) x)
-		       ((integerp x) (int-to-string x))
-		       ((atom (format "%S" x)))
-		       ((null x) "")
-		       (t x)))
-	     (geben-flatten (list (plist-get cmd :operand)
-				  "-i"
-				  (plist-get cmd :tid)
-				  (plist-get cmd :param)))
-	     " "))
+                 (cond ((stringp x) x)
+                       ((integerp x) (int-to-string x))
+                       ((atom (format "%S" x)))
+                       ((null x) "")
+                       (t x)))
+             (geben-flatten (list (plist-get cmd :operand)
+                                  "-i"
+                                  (plist-get cmd :tid)
+                                  (plist-get cmd :param)))
+             " "))
 
 (defsubst geben-session-cmd-make (session operand params)
   "Create a new command object for SESSION.
 Assign OPERAND to :operand, and PARAMS to :param in the plist."
   (list :session session
-	:tid (geben-session-next-tid session)
-	:operand operand
-	:param params))
+        :tid (geben-session-next-tid session)
+        :operand operand
+        :param params))
 
 (defsubst geben-session-cmd-append (session cmd)
   (let ((cmds (geben-session-cmd session)))
     (if cmds
-	(nconc cmds (list cmd))
+        (nconc cmds (list cmd))
       (setf (geben-session-cmd session) (list cmd)))))
 
 (defun geben-session-cmd-remove (session tid)
   "Get a command object from the command hash table for SESSION specified by TID."
   (let ((cmds (geben-session-cmd session)))
     (if (eq tid (plist-get (car cmds) :tid))
-	(prog1
-	    (car cmds)
-	  (setf (geben-session-cmd session) (cdr cmds)))
+        (prog1
+            (car cmds)
+          (setf (geben-session-cmd session) (cdr cmds)))
       (let (match-cmd)
-	(setf (geben-session-cmd session)
-	      (cl-remove-if (lambda (cmd)
-			      (and (eq tid (plist-get cmd :tid))
-				   (setq match-cmd cmd)))
-			    cmds))
-	match-cmd))))
+        (setf (geben-session-cmd session)
+              (cl-remove-if (lambda (cmd)
+                              (and (eq tid (plist-get cmd :tid))
+                                   (setq match-cmd cmd)))
+                            cmds))
+        match-cmd))))
 
 
 ;;==============================================================
@@ -628,18 +628,18 @@ Assign OPERAND to :operand, and PARAMS to :param in the plist."
   "Get a transaction id of MSG."
   (let ((tid (xml-get-attribute-or-nil msg 'transaction_id)))
     (and tid
-	 (string-to-number tid))))
+         (string-to-number tid))))
 
 (defun geben-dbgp-entry (session msg)
   "Within SESSION, analyze MSG and dispatch to a specific handler."
   ;; remain session status ('connect, 'init, 'break, 'stopping, 'stopped)
   (let ((handler (intern-soft (concat "geben-dbgp-handle-"
-				      (symbol-name (xml-node-name msg)))))
-	(status (xml-get-attribute-or-nil msg 'status)))
+                                      (symbol-name (xml-node-name msg)))))
+        (status (xml-get-attribute-or-nil msg 'status)))
     (and status
-	 (setf (geben-session-state session) (intern (concat ":" status))))
+         (setf (geben-session-state session) (intern (concat ":" status))))
     (and (functionp handler)
-	 (funcall handler session msg))))
+         (funcall handler session msg))))
 
 (defvar geben-dbgp-init-hook nil)
 
@@ -651,24 +651,24 @@ Assign OPERAND to :operand, and PARAMS to :param in the plist."
 (defun geben-dbgp-handle-response (session msg)
   "Within SESSION, handle a response message MSG."
   (let* ((tid (geben-dbgp-tid-read msg))
-	 (cmd (geben-session-cmd-remove session tid))
-	 (err (dbgp-xml-get-error-node msg)))
+         (cmd (geben-session-cmd-remove session tid))
+         (err (dbgp-xml-get-error-node msg)))
     (geben-dbgp-handle-status session msg)
     (geben-dbgp-process-command-queue session)
     (cond
      (err
       (message "Command error: %s"
-	       (dbgp-xml-get-error-message msg)))
+               (dbgp-xml-get-error-message msg)))
      (cmd
       (let* ((operand (replace-regexp-in-string
-		       "_" "-" (xml-get-attribute msg 'command)))
-	     (func-name (concat "geben-dbgp-response-" operand))
-	     (func (intern-soft func-name)))
-	(and (functionp func)
-	     (funcall func session cmd msg)))))
+                       "_" "-" (xml-get-attribute msg 'command)))
+             (func-name (concat "geben-dbgp-response-" operand))
+             (func (intern-soft func-name)))
+        (and (functionp func)
+             (funcall func session cmd msg)))))
     (mapc (lambda (callback)
-	    (funcall callback session cmd msg err))
-	  (plist-get cmd :callback))))
+            (funcall callback session cmd msg err))
+          (plist-get cmd :callback))))
 
 (defun geben-dbgp-handle-status (session msg)
   "Within SESSION, handle status code in a response message MSG."
@@ -677,7 +677,7 @@ Assign OPERAND to :operand, and PARAMS to :param in the plist."
      ((equal status "stopping")
       (accept-process-output)
       (and (geben-session-active-p session)
-	   (geben-dbgp-command-stop session))))))
+           (geben-dbgp-command-stop session))))))
 
 ;;; command sending
 
@@ -699,16 +699,16 @@ OPERAND and PARAMS will be passed along to 'geben-session-cmd-make.
 Return a cmd list."
   (if (geben-session-active-p session)
       (let ((cmd (geben-session-cmd-make session operand params)))
-	(geben-session-cmd-append session cmd)
-	(unless (geben-session-sending-p session)
-	  (setf (geben-session-sending-p session) t)
-	  (geben-dbgp-process-command-queue session))
-	cmd)))
+        (geben-session-cmd-append session cmd)
+        (unless (geben-session-sending-p session)
+          (setf (geben-session-sending-p session) t)
+          (geben-dbgp-process-command-queue session))
+        cmd)))
 
 (defun geben-dbgp-process-command-queue (session)
   (let ((cmd (car (geben-session-cmd session))))
     (if cmd
-	(geben-dbgp-send-string session (geben-cmd-expand cmd))
+        (geben-dbgp-send-string session (geben-cmd-expand cmd))
       (setf (geben-session-sending-p session) nil))))
 
 (defvar geben-dbgp-continuous-command-hook nil)
@@ -775,33 +775,33 @@ Return a cmd list."
 (defun geben-dbgp-response-eval (session cmd msg)
   "A response message handler for \`eval\' command."
   (message "result: %S"
-	   (geben-dbgp-decode-value (car-safe (xml-get-children msg 'property)))))
+           (geben-dbgp-decode-value (car-safe (xml-get-children msg 'property)))))
 
 (defun geben-dbgp-decode-value (prop)
   "Decode a VALUE passed by debugger engine."
   (let ((type (xml-get-attribute prop 'type))
-	result)
+        result)
     (setq result
-	  (cond
-	   ((or (string= "array" type)
-		(string= "object" type))
-	    (mapcar (lambda (value)
-		      (geben-dbgp-decode-value value))
-		    (xml-get-children prop 'property)))
-	   ((string= "null" type)
-	    nil)
-	   (t
-	    (let ((value (car (last prop))))
-	      (cl-assert (stringp value))
-	      (when (string= "base64" (xml-get-attribute prop 'encoding))
-		(setq value (base64-decode-string value)))
-	      (if (string= "string" type)
-		  (decode-coding-string value 'utf-8)
-		(string-to-number value))))))
+          (cond
+           ((or (string= "array" type)
+                (string= "object" type))
+            (mapcar (lambda (value)
+                      (geben-dbgp-decode-value value))
+                    (xml-get-children prop 'property)))
+           ((string= "null" type)
+            nil)
+           (t
+            (let ((value (car (last prop))))
+              (cl-assert (stringp value))
+              (when (string= "base64" (xml-get-attribute prop 'encoding))
+                (setq value (base64-decode-string value)))
+              (if (string= "string" type)
+                  (decode-coding-string value 'utf-8)
+                (string-to-number value))))))
     (let ((name (xml-get-attribute-or-nil prop 'name)))
       (if name
-	  (cons name result)
-	result))))
+          (cons name result)
+        result))))
 
 (eval-when-compile
   (require 'tramp))
@@ -830,9 +830,9 @@ If the value is nil, the files left in buffers."
 
 (defun geben-source-find-file-handler ()
   (let* ((local-path (buffer-file-name))
-	 (session (and local-path (geben-source-find-session local-path))))
+         (session (and local-path (geben-source-find-session local-path))))
     (if session
-	(run-hook-with-args 'geben-source-visit-hook session (current-buffer)))))
+        (run-hook-with-args 'geben-source-visit-hook session (current-buffer)))))
 
 (add-hook 'find-file-hook #'geben-source-find-file-handler)
 
@@ -858,49 +858,49 @@ A source object forms a property list with three properties
   (let ((buf (find-buffer-visiting (or (plist-get source :local-path) ""))))
     (when buf
       (with-current-buffer buf
-	(when (and (boundp 'geben-mode)
-		   (symbol-value 'geben-mode))
-	  (run-hooks 'geben-source-release-hook))
-	;;	  Not implemented yet
-	;; 	  (and (buffer-modified-p buf)
-	;; 	       (switch-to-buffer buf)
-	;; 	       (yes-or-no-p "Buffer is modified. Save it?")
-	;; 	       (geben-write-file-contents this buf))
-	(when geben-close-mirror-file-after-finish
-	  (set-buffer-modified-p nil)
-	  (kill-buffer buf))))))
+        (when (and (boundp 'geben-mode)
+                   (symbol-value 'geben-mode))
+          (run-hooks 'geben-source-release-hook))
+        ;;	  Not implemented yet
+        ;; 	  (and (buffer-modified-p buf)
+        ;; 	       (switch-to-buffer buf)
+        ;; 	       (yes-or-no-p "Buffer is modified. Save it?")
+        ;; 	       (geben-write-file-contents this buf))
+        (when geben-close-mirror-file-after-finish
+          (set-buffer-modified-p nil)
+          (kill-buffer buf))))))
 
 (defsubst geben-source-fileuri-regularize (fileuri)
   ;; for bug of Xdebug 2.0.3 and below:
   (replace-regexp-in-string "%28[0-9]+%29%20:%20runtime-created%20function$" ""
-			    fileuri))
+                            fileuri))
 
 (defun geben-source-fileuri (session local-path)
   "Guess a file uri string which counters to LOCAL-PATH."
   (let* ((tempdir (geben-session-tempdir session))
-	 (templen (length tempdir))
-	 (tramp-spec (plist-get (geben-session-storage session) :tramp))
-	 (tramp-spec-len (and tramp-spec (length tramp-spec))))
+         (templen (length tempdir))
+         (tramp-spec (plist-get (geben-session-storage session) :tramp))
+         (tramp-spec-len (and tramp-spec (length tramp-spec))))
     (concat "file://"
-	    (cond
-	     ((and (< templen (length local-path))
-		   (string= tempdir (substring local-path 0 templen)))
-	      (substring local-path
-			 (- templen
-			    (if (string< "" (file-name-nondirectory tempdir)) 0 1))))
-	     ((and tramp-spec
-		   (< tramp-spec-len (length local-path))
-		   (string= tramp-spec (substring local-path 0 tramp-spec-len)))
-	      (substring local-path tramp-spec-len))
-	     (t
-	      local-path)))))
+            (cond
+             ((and (< templen (length local-path))
+                   (string= tempdir (substring local-path 0 templen)))
+              (substring local-path
+                         (- templen
+                            (if (string< "" (file-name-nondirectory tempdir)) 0 1))))
+             ((and tramp-spec
+                   (< tramp-spec-len (length local-path))
+                   (string= tramp-spec (substring local-path 0 tramp-spec-len)))
+              (substring local-path tramp-spec-len))
+             (t
+              local-path)))))
 
 (defun geben-source-local-path (session fileuri)
   "Generate path string from FILEURI to store temporarily."
   (let ((local-path (geben-source-local-path-in-server session fileuri)))
     (when local-path
       (expand-file-name (substring local-path (if (string-match "^[A-Z]:" local-path) 3 1))
-			(geben-session-tempdir session)))))
+                        (geben-session-tempdir session)))))
 
 (defun geben-source-local-path-in-server (session fileuri &optional disable-completion)
   "Make a path string correspond to FILEURI."
@@ -909,12 +909,12 @@ A source object forms a property list with three properties
       (require 'url-util)
       (setq path (url-unhex-string path))
       (when (string-match "^/[A-Z]:" path) ;; for HTTP server on Windows
-	(setq path (substring path 1)))
+        (setq path (substring path 1)))
       (if (and (not disable-completion)
-	       (string= "" (file-name-nondirectory path)))
-	  (expand-file-name (geben-source-default-file-name session)
-			    path)
-	path))))
+               (string= "" (file-name-nondirectory path)))
+          (expand-file-name (geben-source-default-file-name session)
+                            path)
+        path))))
 
 (defun geben-source-default-file-name (session)
   (cl-case (geben-session-language session)
@@ -927,25 +927,25 @@ A source object forms a property list with three properties
 (defun geben-source-find-session (temp-path)
   "Find a session which may have a file at TEMP-PATH in its temporary directory tree."
   (cl-find-if (lambda (session)
-		(let ((tempdir (geben-session-tempdir session)))
-		  (ignore-errors
-		    (string= tempdir (substring temp-path 0 (length tempdir))))))
-	      geben-sessions))
+                (let ((tempdir (geben-session-tempdir session)))
+                  (ignore-errors
+                    (string= tempdir (substring temp-path 0 (length tempdir))))))
+              geben-sessions))
 
 (defun geben-source-visit (local-path)
   "Visit to a local source code file."
   (let ((buf (or (find-buffer-visiting local-path)
-		 (if (file-exists-p local-path)
-		     (let* ((session (geben-source-find-session local-path))
-			    (storage (and session
-					  (geben-session-storage session)))
-			    (coding-system (or (plist-get storage :source-coding-system)
-					       geben-source-coding-system)))
-		       (if coding-system
-			   (let ((coding-system-for-read coding-system)
-				 (coding-system-for-write coding-system))
-			     (find-file-noselect local-path))
-			 (find-file-noselect local-path)))))))
+                 (if (file-exists-p local-path)
+                     (let* ((session (geben-source-find-session local-path))
+                            (storage (and session
+                                          (geben-session-storage session)))
+                            (coding-system (or (plist-get storage :source-coding-system)
+                                               geben-source-coding-system)))
+                       (if coding-system
+                           (let ((coding-system-for-read coding-system)
+                                 (coding-system-for-write coding-system))
+                             (find-file-noselect local-path))
+                         (find-file-noselect local-path)))))))
     (when buf
       (geben-dbgp-display-window buf)
       buf)))
@@ -954,12 +954,12 @@ A source object forms a property list with three properties
 
 (defun geben-session-source-storage-add (session fileuri)
   (let* ((storage (geben-session-storage session))
-	 (list (plist-get storage :source)))
+         (list (plist-get storage :source)))
     (if (and (string-match "^file:/" fileuri)
-	     (not (cl-find list fileuri :test #'equal)))
-	(if list
-	    (nconc list (list fileuri))
-	  (plist-put storage :source (list fileuri))))))
+             (not (cl-find list fileuri :test #'equal)))
+        (if list
+            (nconc list (list fileuri))
+          (plist-put storage :source (list fileuri))))))
 
 ;; session
 
@@ -993,20 +993,20 @@ A source object forms a property list with three properties
 
 (defsubst geben-session-source-append (session fileuri local-path)
   (puthash fileuri (list :fileuri fileuri :local-path local-path)
-	   (geben-session-source session)))
+           (geben-session-source session)))
 
 (defsubst geben-session-source-local-path (session fileuri)
   "Find a known local-path that counters to FILEURI."
   (plist-get (gethash fileuri (geben-session-source session))
-	     :local-path))
+             :local-path))
 
 (defsubst geben-session-source-fileuri (session local-path)
   "Find a known fileuri that counters to LOCAL-PATH."
   (cl-block geben-session-souce-fileuri
     (maphash (lambda (fileuri path)
-	       (and (equal local-path (plist-get path :local-path))
-		    (cl-return-from geben-session-souce-fileuri fileuri)))
-	     (geben-session-source session))))
+               (and (equal local-path (plist-get path :local-path))
+                    (cl-return-from geben-session-souce-fileuri fileuri)))
+             (geben-session-source session))))
 
 (defsubst geben-session-source-content-coding-system (session content)
   "Guess a coding-system for the CONTENT."
@@ -1019,19 +1019,19 @@ A source object forms a property list with three properties
   (make-directory (file-name-directory path) t)
   (ignore-errors
     (with-current-buffer (or (find-buffer-visiting path)
-			     (create-file-buffer path))
+                             (create-file-buffer path))
       (let ((inhibit-read-only t)
-	    (coding-system (geben-session-source-content-coding-system session content)))
-	(buffer-disable-undo)
-	(widen)
-	(erase-buffer)
-	(font-lock-mode 0)
-	(unless (eq 'undecided coding-system)
-	  (set-buffer-file-coding-system coding-system))
-	(insert (decode-coding-string content coding-system)))
+            (coding-system (geben-session-source-content-coding-system session content)))
+        (buffer-disable-undo)
+        (widen)
+        (erase-buffer)
+        (font-lock-mode 0)
+        (unless (eq 'undecided coding-system)
+          (set-buffer-file-coding-system coding-system))
+        (insert (decode-coding-string content coding-system)))
       (with-temp-message ""
-	(write-file path)
-	(kill-buffer (current-buffer))))
+        (write-file path)
+        (kill-buffer (current-buffer))))
     t))
 
 ;;; dbgp
@@ -1040,12 +1040,12 @@ A source object forms a property list with three properties
   "Send source command.
 FILEURI is a uri of the target file of a debuggee site."
   (geben-dbgp-send-command session "source" (cons "-f"
-						  (geben-source-fileuri-regularize fileuri))))
+                                                  (geben-source-fileuri-regularize fileuri))))
 
 (defun geben-dbgp-response-source (session cmd msg)
   "A response message handler for \`source\' command."
   (let* ((fileuri (geben-cmd-param-get cmd "-f"))
-	 (local-path (geben-source-local-path session fileuri)))
+         (local-path (geben-source-local-path session fileuri)))
     (when local-path
       (geben-session-source-add session fileuri local-path (base64-decode-string (cl-third msg)))
       (geben-source-visit local-path))))
@@ -1074,9 +1074,9 @@ Or return specific TRAMP spec. (e.g. \"/user@example.com:\""
 (defun geben-session-source-visit-original-file (session fileuri &optional disable-completion)
   (let ((target-path (geben-session-source-read-file-name session fileuri disable-completion)))
     (and target-path
-	 (prog1
-	     (find-file target-path)
-	   (message "visited: %s" target-path)))))
+         (prog1
+             (find-file target-path)
+           (message "visited: %s" target-path)))))
 
 (defun geben-session-source-read-file-name (session fileuri &optional disable-completion)
   (if (geben-session-remote-p session)
@@ -1088,35 +1088,35 @@ Or return specific TRAMP spec. (e.g. \"/user@example.com:\""
     ;; local file
     (unless (file-regular-p local-path)
       (while (not (file-regular-p (setq local-path
-					(read-file-name "Find local file: "
-							local-path local-path t ""))))
-	(beep)))
+                                        (read-file-name "Find local file: "
+                                                        local-path local-path t ""))))
+        (beep)))
     (expand-file-name local-path)))
 
 (defun geben-session-source-read-file-name-remote (session fileuri &optional disable-completion)
   (condition-case nil
       (if (fboundp 'geben-visit-remote-file)
-	  (funcall geben-visit-remote-file session fileuri)
-	(let* ((ip (geben-session-ip-get session))
-	       (local-path (geben-source-local-path-in-server session fileuri disable-completion))
-	       (storage (geben-session-storage session))
-	       (path-prefix (or (plist-get storage :tramp)
-				(and (fboundp 'geben-get-tramp-spec-for)
-				     (funcall 'geben-get-tramp-spec-for
-					      (format "/%s:%s" ip local-path)))))
-	       (find-file-default (if path-prefix
-				      (concat path-prefix local-path)
-				    (format "/%s:%s" ip local-path))))
-	  (while (not (tramp-handle-file-regular-p
-		       (setq find-file-default (read-file-name "Find remote file: "
-							       (file-name-directory find-file-default)
-							       find-file-default t
-							       (file-name-nondirectory find-file-default)))))
-	    (beep))
-	  (require 'tramp)
-	  (when (tramp-tramp-file-p find-file-default)
-	    (plist-put storage :tramp (replace-regexp-in-string ":[^:]+$" ":" find-file-default)))
-	  find-file-default))
+          (funcall geben-visit-remote-file session fileuri)
+        (let* ((ip (geben-session-ip-get session))
+               (local-path (geben-source-local-path-in-server session fileuri disable-completion))
+               (storage (geben-session-storage session))
+               (path-prefix (or (plist-get storage :tramp)
+                                (and (fboundp 'geben-get-tramp-spec-for)
+                                     (funcall 'geben-get-tramp-spec-for
+                                              (format "/%s:%s" ip local-path)))))
+               (find-file-default (if path-prefix
+                                      (concat path-prefix local-path)
+                                    (format "/%s:%s" ip local-path))))
+          (while (not (tramp-handle-file-regular-p
+                       (setq find-file-default (read-file-name "Find remote file: "
+                                                               (file-name-directory find-file-default)
+                                                               find-file-default t
+                                                               (file-name-nondirectory find-file-default)))))
+            (beep))
+          (require 'tramp)
+          (when (tramp-tramp-file-p find-file-default)
+            (plist-put storage :tramp (replace-regexp-in-string ":[^:]+$" ":" find-file-default)))
+          find-file-default))
     (quit (beep))))
 
 
@@ -1133,14 +1133,14 @@ Or return specific TRAMP spec. (e.g. \"/user@example.com:\""
 
 (defun geben-session-cursor-update (session fileuri lineno)
   (let ((lineno (cond
-		 ((numberp lineno)
-		  lineno)
-		 ((stringp lineno)
-		  (string-to-number lineno))))
-	(fileuri (geben-source-fileuri-regularize fileuri)))
+                 ((numberp lineno)
+                  lineno)
+                 ((stringp lineno)
+                  (string-to-number lineno))))
+        (fileuri (geben-source-fileuri-regularize fileuri)))
     (and lineno
-	 (floatp lineno)
-	 (setq lineno 1))		; restrict to integer
+         (floatp lineno)
+         (setq lineno 1))		; restrict to integer
     (plist-put (geben-session-cursor session) :position (cons fileuri lineno)))
   (geben-session-cursor-indicate session))
 
@@ -1149,59 +1149,59 @@ Or return specific TRAMP spec. (e.g. \"/user@example.com:\""
 if DISPLAY-BUFFERP is non-nil, the buffer contains the breaking point
 will be displayed in a window."
   (let* ((cursor (geben-session-cursor session))
-	 (position (plist-get cursor :position))
-	 (fileuri (car position))
-	 (lineno (cdr position))
-	 (local-path (geben-session-source-local-path session fileuri)))
+         (position (plist-get cursor :position))
+         (fileuri (car position))
+         (lineno (cdr position))
+         (local-path (geben-session-source-local-path session fileuri)))
     (if local-path
-	(geben-session-cursor-overlay-update session)
+        (geben-session-cursor-overlay-update session)
       (geben-dbgp-sequence
-	  (geben-dbgp-command-source session fileuri)
-	(lambda (session cmd msg err)
-	  (unless err
-	    (geben-session-cursor-overlay-update session)))))))
+          (geben-dbgp-command-source session fileuri)
+        (lambda (session cmd msg err)
+          (unless err
+            (geben-session-cursor-overlay-update session)))))))
 
 (defun geben-session-cursor-overlay-update (session)
   (let* ((cursor (geben-session-cursor session))
-	 (overlay (plist-get cursor :overlay))
-	 (position (plist-get cursor :position))
-	 (fileuri (car position))
-	 (lineno (cdr position))
-	 (local-path (and fileuri
-			  (geben-session-source-local-path session fileuri))))
+         (overlay (plist-get cursor :overlay))
+         (position (plist-get cursor :position))
+         (fileuri (car position))
+         (lineno (cdr position))
+         (local-path (and fileuri
+                          (geben-session-source-local-path session fileuri))))
     (if (null position)
-	(when (overlayp overlay)
-	  (delete-overlay overlay)
-	  (plist-put cursor :overlay nil))
+        (when (overlayp overlay)
+          (delete-overlay overlay)
+          (plist-put cursor :overlay nil))
       (let ((buf (geben-source-visit local-path))
-	    pos)
-	(when buf
-	  (with-current-buffer buf
-	    (ignore-errors
-	      (save-restriction
-		(widen)
-		(goto-line lineno)
-		(setq pos (point))
-		(if (overlayp overlay)
-		    (move-overlay overlay pos pos buf)
-		  (plist-put cursor :overlay
-			     (setq overlay (make-overlay pos pos buf)))
-		  (overlay-put overlay
-			       'before-string
-			       (propertize "x"
-					   'display
-					   (list
-					    '(margin left-margin)
-					    (propertize "=>"
-							'face 'geben-cursor-arrow-face))))))
-	      (set-window-point (get-buffer-window buf) pos))))))))
+            pos)
+        (when buf
+          (with-current-buffer buf
+            (ignore-errors
+              (save-restriction
+                (widen)
+                (goto-line lineno)
+                (setq pos (point))
+                (if (overlayp overlay)
+                    (move-overlay overlay pos pos buf)
+                  (plist-put cursor :overlay
+                             (setq overlay (make-overlay pos pos buf)))
+                  (overlay-put overlay
+                               'before-string
+                               (propertize "x"
+                                           'display
+                                           (list
+                                            '(margin left-margin)
+                                            (propertize "=>"
+                                                        'face 'geben-cursor-arrow-face))))))
+              (set-window-point (get-buffer-window buf) pos))))))))
 
 (defun geben-session-cursor-file-visit-handler (session buf)
   (let ((cursor (geben-session-cursor session))
-	(fileuri (geben-session-source-fileuri session (buffer-file-name buf))))
+        (fileuri (geben-session-source-fileuri session (buffer-file-name buf))))
     (and fileuri
-	 (equal fileuri (car (plist-get cursor :position)))
-	 (geben-session-cursor-overlay-update session))))
+         (equal fileuri (car (plist-get cursor :position)))
+         (geben-session-cursor-overlay-update session))))
 
 (add-hook 'geben-source-visit-hook #'geben-session-cursor-file-visit-handler)
 
@@ -1211,8 +1211,8 @@ will be displayed in a window."
 ;;==============================================================
 
 (cl-defstruct (geben-breakpoint
-	    (:constructor nil)
-	    (:constructor geben-breakpoint-make))
+               (:constructor nil)
+               (:constructor geben-breakpoint-make))
   "Breakpoint setting.
 
 types:
@@ -1254,21 +1254,21 @@ debugging is finished."
   (let ((bp (append (list :type type) params)))
     ;; force :lineno and :hit-value value to be integer.
     (mapc (lambda (prop)
-	    (when (stringp (plist-get bp prop))
-	      (plist-put bp prop (string-to-number (plist-get bp prop)))))
-	  '(:lineno :hit-value))
+            (when (stringp (plist-get bp prop))
+              (plist-put bp prop (string-to-number (plist-get bp prop)))))
+          '(:lineno :hit-value))
     ;; setup overlay
     (when (and (plist-get params :fileuri)
-	       (plist-get params :lineno)
-	       (not (plist-get params :overlay)))
+               (plist-get params :lineno)
+               (not (plist-get params :overlay)))
       (geben-bp-overlay-setup bp))
     ;; Xdebug issue; generate :class and :method name from :function
     (let ((name (plist-get params :function)))
       (and name
-	   (geben-session-xdebug-p session)
-	   (string-match "[:->]" name)
-	   (plist-put bp :class (replace-regexp-in-string "^\\([^:-]+\\).*" "\\1" name))
-	   (plist-put bp :method (replace-regexp-in-string "^.*[:>]+" "" name))))
+           (geben-session-xdebug-p session)
+           (string-match "[:->]" name)
+           (plist-put bp :class (replace-regexp-in-string "^\\([^:-]+\\).*" "\\1" name))
+           (plist-put bp :method (replace-regexp-in-string "^.*[:>]+" "" name))))
     ;; make sure bp has :state.
     (unless (plist-get params :state)
       (plist-put bp :state "enabled"))
@@ -1284,41 +1284,41 @@ debugging is finished."
 (defsubst geben-bp= (lhs rhs)
   "Return t if two breakpoint object point same thing."
   (and (eq (plist-get lhs :type)
-	   (plist-get rhs :type))
+           (plist-get rhs :type))
        (eq (plist-get lhs :lineno)
-	   (plist-get rhs :lineno))
+           (plist-get rhs :lineno))
        (equal (plist-get lhs :fileuri)
-	      (plist-get rhs :fileuri))
+              (plist-get rhs :fileuri))
        (equal (plist-get lhs :function)
-	      (plist-get rhs :function))
+              (plist-get rhs :function))
        (equal (plist-get lhs :exception)
-	      (plist-get rhs :exception))
+              (plist-get rhs :exception))
        (equal (plist-get lhs :expression)
-	      (plist-get rhs :expression))))
+              (plist-get rhs :expression))))
 
 ;; session storage
 
 (defun geben-session-breakpoint-storage-add (session bp)
   (let* ((storage (geben-session-storage session))
-	 (list (plist-get storage :bp)))
+         (list (plist-get storage :bp)))
     (unless (cl-find bp list :test #'geben-bp=)
       (let ((bp-copy (copy-sequence bp)))
-	(plist-put bp-copy :overlay nil)
-	(if list
-	    (nconc list (list bp-copy))
-	  (plist-put storage :bp (list bp-copy)))))))
+        (plist-put bp-copy :overlay nil)
+        (if list
+            (nconc list (list bp-copy))
+          (plist-put storage :bp (list bp-copy)))))))
 
 (defun geben-session-breakpoint-storage-remove (session bp)
   (let* ((storage (geben-session-storage session))
-	 (list (plist-get storage :bp)))
+         (list (plist-get storage :bp)))
     (when (cl-find bp list :test #'geben-bp=)
       (plist-put storage :bp (cl-delete bp list :test #'geben-bp=)))))
 
 (defun geben-session-breakpoint-storage-restore (session)
   (let ((storage (geben-session-storage session))
-	(breakpoint (geben-session-breakpoint session)))
+        (breakpoint (geben-session-breakpoint session)))
     (setf (geben-breakpoint-list breakpoint)
-	  (plist-get storage :bp))))
+          (plist-get storage :bp))))
 
 ;; session
 
@@ -1326,25 +1326,25 @@ debugging is finished."
   "Add a breakpoint BP to session's breakpoint list."
   (unless (geben-session-breakpoint-find session bp)
     (let* ((breakpoint (geben-session-breakpoint session))
-	   (list (geben-breakpoint-list breakpoint)))
+           (list (geben-breakpoint-list breakpoint)))
       (if list
-	  (nconc list (list bp))
-	(setf (geben-breakpoint-list breakpoint) (list bp))))
+          (nconc list (list bp))
+        (setf (geben-breakpoint-list breakpoint) (list bp))))
     (geben-session-breakpoint-storage-add session bp)))
 
 (defun geben-session-breakpoint-remove (session id-or-obj)
   "Remove breakpoints having specific breakpoint id or same meaning objects."
   (setf (geben-breakpoint-list (geben-session-breakpoint session))
-	(cl-remove-if (if (stringp id-or-obj)
-			  (lambda (bp)
-			    (when (string= (plist-get bp :id) id-or-obj)
-			      (geben-session-breakpoint-storage-remove session bp)
-			      (geben-bp-finalize bp)))
-			(lambda (bp)
-			  (when (geben-bp= id-or-obj bp)
-			    (geben-session-breakpoint-storage-remove session bp)
-			    (geben-bp-finalize bp))))
-		      (geben-breakpoint-list (geben-session-breakpoint session)))))
+        (cl-remove-if (if (stringp id-or-obj)
+                          (lambda (bp)
+                            (when (string= (plist-get bp :id) id-or-obj)
+                              (geben-session-breakpoint-storage-remove session bp)
+                              (geben-bp-finalize bp)))
+                        (lambda (bp)
+                          (when (geben-bp= id-or-obj bp)
+                            (geben-session-breakpoint-storage-remove session bp)
+                            (geben-bp-finalize bp))))
+                      (geben-breakpoint-list (geben-session-breakpoint session)))))
 
 (defun geben-session-breakpoint-find (session id-or-obj)
   "Find a breakpoint.
@@ -1352,7 +1352,7 @@ id-or-obj should be either a breakpoint id or a breakpoint object."
   (cl-find-if
    (if (stringp id-or-obj)
        (lambda (bp)
-	 (string= (plist-get bp :id) id-or-obj))
+         (string= (plist-get bp :id) id-or-obj))
      (lambda (bp)
        (geben-bp= id-or-obj bp)))
    (geben-breakpoint-list (geben-session-breakpoint session))))
@@ -1362,7 +1362,7 @@ id-or-obj should be either a breakpoint id or a breakpoint object."
 (defun geben-dbgp-breakpoint-restore (session)
   "Restore breakpoints against new DBGp session."
   (let ((breakpoints (geben-breakpoint-list (geben-session-breakpoint session)))
-	overlay)
+        overlay)
     (setf (geben-breakpoint-list (geben-session-breakpoint session)) nil)
     (dolist (bp breakpoints)
       ;; User may edit code since previous debugging session
@@ -1370,53 +1370,53 @@ id-or-obj should be either a breakpoint id or a breakpoint object."
       ;; The followings try to adjust breakpoint line to
       ;; nearly what user expect.
       (if (and (setq overlay (plist-get bp :overlay))
-	       (overlayp overlay)
-	       (overlay-livep overlay)
-	       (eq (overlay-buffer overlay)
-		   (find-buffer-visiting (or (plist-get bp :local-path)
-					     ""))))
-	  (with-current-buffer (overlay-buffer overlay)
-	    (save-excursion
-	      (plist-put bp :lineno (progn
-				      (goto-char (overlay-start overlay))
-				      (geben-what-line))))))
+               (overlayp overlay)
+               (overlay-livep overlay)
+               (eq (overlay-buffer overlay)
+                   (find-buffer-visiting (or (plist-get bp :local-path)
+                                             ""))))
+          (with-current-buffer (overlay-buffer overlay)
+            (save-excursion
+              (plist-put bp :lineno (progn
+                                      (goto-char (overlay-start overlay))
+                                      (geben-what-line))))))
       (geben-dbgp-sequence-bind (bp)
-	(geben-dbgp-command-breakpoint-set session bp)
-	(lambda (session cmd msg err)
-	  (geben-bp-finalize bp))))))
+        (geben-dbgp-command-breakpoint-set session bp)
+        (lambda (session cmd msg err)
+          (geben-bp-finalize bp))))))
 
 (defun geben-breakpoint-remove (session bp-or-list)
   "Remove specified breakpoints."
   (dolist (bp (if (geben-breakpoint-p bp-or-list)
-		  (list bp-or-list)
-		bp-or-list))
+                  (list bp-or-list)
+                bp-or-list))
     (let ((bid (plist-get bp :id)))
       (if (and (geben-session-active-p session)
-	       bid)
-	  (geben-dbgp-sequence-bind (bid)
-	    (geben-dbgp-send-command session "breakpoint_remove" (cons "-d" bid))
-	    (lambda (session cmd msg err)
-	      ;; remove a stray breakpoint from hash table.
-	      (when err
-		(geben-session-breakpoint-remove session bid))))
-	(setf (geben-breakpoint-list (geben-session-breakpoint session))
-	      (cl-delete-if (lambda (bp1)
-			      (geben-bp= bp bp1))
-			    (geben-breakpoint-list (geben-session-breakpoint session))))))))
+               bid)
+          (geben-dbgp-sequence-bind (bid)
+            (geben-dbgp-send-command session "breakpoint_remove" (cons "-d" bid))
+            (lambda (session cmd msg err)
+              ;; remove a stray breakpoint from hash table.
+              (when err
+                (geben-session-breakpoint-remove session bid))))
+        (setf (geben-breakpoint-list (geben-session-breakpoint session))
+              (cl-delete-if (lambda (bp1)
+                              (geben-bp= bp bp1))
+                            (geben-breakpoint-list (geben-session-breakpoint session))))))))
 
 (defun geben-breakpoint-clear (session)
   "Clear all breakpoints."
   (geben-breakpoint-remove session
-			   (geben-breakpoint-list (geben-session-breakpoint session))))
+                           (geben-breakpoint-list (geben-session-breakpoint session))))
 
 (defun geben-breakpoint-find-at-pos (session buf pos)
   (with-current-buffer buf
     (cl-remove-if 'null
-		  (mapcar (lambda (overlay)
-			    (let ((bp (overlay-get overlay 'bp)))
-			      (and (eq :line (plist-get bp :type))
-				   bp)))
-			  (overlays-at pos)))))
+                  (mapcar (lambda (overlay)
+                            (let ((bp (overlay-get overlay 'bp)))
+                              (and (eq :line (plist-get bp :type))
+                                   bp)))
+                          (overlays-at pos)))))
 
 ;; breakpoint list
 
@@ -1437,53 +1437,53 @@ id-or-obj should be either a breakpoint id or a breakpoint object."
 
 (defun geben-breakpoint-sort-pred (a b)
   (if (and (stringp (plist-get a :id))
-	   (equal (plist-get a :id)
-		  (plist-get b :id)))
+           (equal (plist-get a :id)
+                  (plist-get b :id)))
       nil
     (let ((type-rank '(:line 1
-			     :call 2
-			     :return 3
-			     :exception 4
-			     :conditional 5
-			     :watch 6))
-	  ax bx cmp)
+                             :call 2
+                             :return 3
+                             :exception 4
+                             :conditional 5
+                             :watch 6))
+          ax bx cmp)
       (setq cmp (- (plist-get type-rank (plist-get a :type))
-		   (plist-get type-rank (plist-get b :type))))
+                   (plist-get type-rank (plist-get b :type))))
       (if (not (zerop cmp))
-	  (< cmp 0)
-	(cl-case (plist-get a :type)
-	  (:line
-	   (setq ax (plist-get a :fileuri))
-	   (setq bx (plist-get b :fileuri))
-	   (or (string< ax bx)
-	       (and (string= ax bx)
-		    (< (plist-get a :lineno)
-		       (plist-get b :lineno)))))
-	  (:call
-	   (string< (plist-get a :function)
-		    (plist-get b :function)))
-	  (:return
-	   (string< (plist-get a :function)
-		    (plist-get b :function)))
-	  (:exception
-	   (string< (plist-get a :exception)
-		    (plist-get b :exception)))
-	  (:conditional
-	   (or (string< (plist-get a :fileuri)
-			(plist-get b :fileuri))
-	       (progn
-		 (setq ax (plist-get a :lineno)
-		       bx (plist-get b :lineno))
-		 (if (null ax)
-		     (not (null ax))
-		   (if (null ax)
-		       nil
-		     (< ax bx))))
-	       (string< (plist-get a :expression)
-			(plist-get b :expression))))
-	  (:watch
-	   (string< (plist-get a :expression)
-		    (plist-get b :expression))))))))
+          (< cmp 0)
+        (cl-case (plist-get a :type)
+          (:line
+           (setq ax (plist-get a :fileuri))
+           (setq bx (plist-get b :fileuri))
+           (or (string< ax bx)
+               (and (string= ax bx)
+                    (< (plist-get a :lineno)
+                       (plist-get b :lineno)))))
+          (:call
+           (string< (plist-get a :function)
+                    (plist-get b :function)))
+          (:return
+           (string< (plist-get a :function)
+                    (plist-get b :function)))
+          (:exception
+           (string< (plist-get a :exception)
+                    (plist-get b :exception)))
+          (:conditional
+           (or (string< (plist-get a :fileuri)
+                        (plist-get b :fileuri))
+               (progn
+                 (setq ax (plist-get a :lineno)
+                       bx (plist-get b :lineno))
+                 (if (null ax)
+                     (not (null ax))
+                   (if (null ax)
+                       nil
+                     (< ax bx))))
+               (string< (plist-get a :expression)
+                        (plist-get b :expression))))
+          (:watch
+           (string< (plist-get a :expression)
+                    (plist-get b :expression))))))))
 
 ;;--------------------------------------------------------------
 ;; breakpoint list mode
@@ -1519,13 +1519,13 @@ The buffer commands are:
     (setq major-mode 'geben-breakpoint-list-mode)
     (setq mode-name "GEBEN breakpoints")
     (set (make-local-variable 'revert-buffer-function)
-	 (lambda (a b) nil))
+         (lambda (a b) nil))
     (and (fboundp 'font-lock-defontify)
-	 (add-hook 'change-major-mode-hook 'font-lock-defontify nil t))
+         (add-hook 'change-major-mode-hook 'font-lock-defontify nil t))
     (setq buffer-read-only t)
     (buffer-disable-undo)
     (if (fboundp 'run-mode-hooks)
-	(run-mode-hooks 'geben-breakpoint-list-mode-hook)
+        (run-mode-hooks 'geben-breakpoint-list-mode-hook)
       (run-hooks 'geben-breakpoint-list-mode-hook)))
   (set (make-local-variable 'geben-current-session) session))
 
@@ -1555,14 +1555,14 @@ The buffer commands are:
   (when (eq major-mode 'geben-breakpoint-list-mode)
     (geben-with-current-session session
       (let (candidates)
-	(save-excursion
-	  (goto-char (point-min))
-	  (let ((buffer-read-only nil))
-	    (while (re-search-forward "^D" nil t)
-	      (add-to-list 'candidates (get-text-property (point) 'geben-bp)))))
-	(geben-breakpoint-remove session candidates)
-	(when candidates
-	  (geben-breakpoint-list-display session))))))
+        (save-excursion
+          (goto-char (point-min))
+          (let ((buffer-read-only nil))
+            (while (re-search-forward "^D" nil t)
+              (add-to-list 'candidates (get-text-property (point) 'geben-bp)))))
+        (geben-breakpoint-remove session candidates)
+        (when candidates
+          (geben-breakpoint-list-display session))))))
 
 (defun geben-breakpoint-list-mode-goto (&optional event)
   "Move to the set point of the selected breakpoint."
@@ -1570,22 +1570,22 @@ The buffer commands are:
   (when (eq major-mode 'geben-breakpoint-list-mode)
     (geben-with-current-session session
       (let ((bp
-	     (if (or (null event)
-		     (not (listp event)))
-		 ;; Actually `event-end' works correctly with a nil argument as
-		 ;; well, so we could dispense with this test, but let's not
-		 ;; rely on this undocumented behavior.
-		 (get-text-property (point) 'geben-bp)
-	       (with-current-buffer (window-buffer (posn-window (event-end event)))
-		 (save-excursion
-		   (goto-char (posn-point (event-end event)))
-		   (get-text-property (point) 'geben-bp)))))
-	    same-window-buffer-names
-	    same-window-regexps)
-	(let ((fileuri (plist-get bp :fileuri))
-	      (lineno (plist-get bp :lineno)))
-	  (and fileuri lineno
-	       (geben-session-cursor-update session fileuri lineno)))))))
+             (if (or (null event)
+                     (not (listp event)))
+                 ;; Actually `event-end' works correctly with a nil argument as
+                 ;; well, so we could dispense with this test, but let's not
+                 ;; rely on this undocumented behavior.
+                 (get-text-property (point) 'geben-bp)
+               (with-current-buffer (window-buffer (posn-window (event-end event)))
+                 (save-excursion
+                   (goto-char (posn-point (event-end event)))
+                   (get-text-property (point) 'geben-bp)))))
+            same-window-buffer-names
+            same-window-regexps)
+        (let ((fileuri (plist-get bp :fileuri))
+              (lineno (plist-get bp :lineno)))
+          (and fileuri lineno
+               (geben-session-cursor-update session fileuri lineno)))))))
 
 (defun geben-breakpoint-list-mode-help ()
   "Display description and key bindings of `geben-breakpoint-list-mode'."
@@ -1599,119 +1599,119 @@ Key mapping and other information is described its help page."
   (interactive)
   (geben-with-current-session session
     (when (and (geben-session-active-p session)
-	       (or force
-		   (geben-session-buffer-visible-p session
-						   geben-breakpoint-list-buffer-name)))
+               (or force
+                   (geben-session-buffer-visible-p session
+                                                   geben-breakpoint-list-buffer-name)))
       (geben-dbgp-sequence
-	  (geben-dbgp-send-command session "breakpoint_list")
-	(lambda (session cmd msg err)
-	  (geben-breakpoint-recreate session cmd msg err)
-	  (geben-breakpoint-list-display session))))))
+          (geben-dbgp-send-command session "breakpoint_list")
+        (lambda (session cmd msg err)
+          (geben-breakpoint-recreate session cmd msg err)
+          (geben-breakpoint-list-display session))))))
 
 (defun geben-breakpoint-recreate (session cmd msg err)
   "Create breakpoint objects according to the result of `breakpoint_list'."
   (unless err
     (dolist (msg-bp (xml-get-children msg 'breakpoint))
       (let* ((id (xml-get-attribute-or-nil msg-bp 'id))
-	     (bp (geben-session-breakpoint-find session id)))
-	(unless bp
-	  (let* ((type (intern-soft (concat ":" (xml-get-attribute msg-bp 'type))))
-		 (fileuri (xml-get-attribute-or-nil msg-bp 'filename))
-		 (lineno (or (xml-get-attribute-or-nil msg-bp 'lineno)
-			     (xml-get-attribute-or-nil msg-bp 'line)))
-		 (function (xml-get-attribute-or-nil msg-bp 'function))
-		 (class (xml-get-attribute-or-nil msg-bp 'class))
-		 (method function)
-		 (exception (xml-get-attribute-or-nil msg-bp 'exception))
-		 (expression (xml-get-attribute-or-nil msg-bp 'expression))
-		 (state (xml-get-attribute-or-nil msg-bp 'state))
-		 (local-path (and fileuri
-				  (or (geben-session-source-local-path session fileuri)
-				      (geben-source-local-path session fileuri)))))
-	    (when (stringp lineno)
-	      (setq lineno (string-to-number lineno))
-	      (when (floatp lineno) ;; debugger engine may return invalid number.
-		(setq lineno 1)))
-	    (when class
-	      (setq function (format "%s::%s" (or function "") class)))
-	    (when expression
-	      (setq expression (base64-decode-string expression)))
-	    (geben-session-breakpoint-add
-	     session
-	     (setq bp (geben-bp-make session type
-				     :id id
-				     :fileuri fileuri
-				     :lineno lineno
-				     :class class
-				     :method method
-				     :function function
-				     :exception exception
-				     :expression expression
-				     :state state
-				     :local-path local-path)))))
-	(when bp
-	  (plist-put bp :hit-count (string-to-number (xml-get-attribute msg-bp 'hit_count)))
-	  (plist-put bp :hit-value (string-to-number (xml-get-attribute msg-bp 'hit_value))))))))
+             (bp (geben-session-breakpoint-find session id)))
+        (unless bp
+          (let* ((type (intern-soft (concat ":" (xml-get-attribute msg-bp 'type))))
+                 (fileuri (xml-get-attribute-or-nil msg-bp 'filename))
+                 (lineno (or (xml-get-attribute-or-nil msg-bp 'lineno)
+                             (xml-get-attribute-or-nil msg-bp 'line)))
+                 (function (xml-get-attribute-or-nil msg-bp 'function))
+                 (class (xml-get-attribute-or-nil msg-bp 'class))
+                 (method function)
+                 (exception (xml-get-attribute-or-nil msg-bp 'exception))
+                 (expression (xml-get-attribute-or-nil msg-bp 'expression))
+                 (state (xml-get-attribute-or-nil msg-bp 'state))
+                 (local-path (and fileuri
+                                  (or (geben-session-source-local-path session fileuri)
+                                      (geben-source-local-path session fileuri)))))
+            (when (stringp lineno)
+              (setq lineno (string-to-number lineno))
+              (when (floatp lineno) ;; debugger engine may return invalid number.
+                (setq lineno 1)))
+            (when class
+              (setq function (format "%s::%s" (or function "") class)))
+            (when expression
+              (setq expression (base64-decode-string expression)))
+            (geben-session-breakpoint-add
+             session
+             (setq bp (geben-bp-make session type
+                                     :id id
+                                     :fileuri fileuri
+                                     :lineno lineno
+                                     :class class
+                                     :method method
+                                     :function function
+                                     :exception exception
+                                     :expression expression
+                                     :state state
+                                     :local-path local-path)))))
+        (when bp
+          (plist-put bp :hit-count (string-to-number (xml-get-attribute msg-bp 'hit_count)))
+          (plist-put bp :hit-value (string-to-number (xml-get-attribute msg-bp 'hit_value))))))))
 
 (defun geben-breakpoint-list-display (session)
   (let ((buf (geben-session-buffer session geben-breakpoint-list-buffer-name))
-	(breakpoints (geben-breakpoint-list (geben-session-breakpoint session)))
-	pos)
+        (breakpoints (geben-breakpoint-list (geben-session-breakpoint session)))
+        pos)
     (with-current-buffer buf
       (geben-breakpoint-list-mode session)
       (let ((inhibit-read-only t))
-	(erase-buffer)
-	(if (or (not (listp breakpoints))
-		(zerop (length breakpoints)))
-	    (insert "No breakpoints.\n")
-	  (setq breakpoints (sort (cl-copy-list breakpoints)
-				  #'geben-breakpoint-sort-pred))
-	  (mapc (lambda (bp)
-		  (insert "  ")
-		  (insert (format "%-11s"
-				  (or (cl-case (plist-get bp :type)
-					(:line "Line")
-					(:exception "Exception")
-					(:call "Call")
-					(:return "Return")
-					(:conditional "Conditional")
-					(:watch "Watch"))
-				      "Unknown")))
-		  (if (geben-session-active-p session)
-		      (insert (format "%2s/%-2s  "
-				      (or (plist-get bp :hit-count) "?")
-				      (let ((hit-value (plist-get bp :hit-value)))
-					(cond
-					 ((null hit-value) "?")
-					 ((zerop hit-value) "*")
-					 (t hit-value)))))
-		    (insert " "))
-		  (when (plist-get bp :function)
-		    (insert (propertize (plist-get bp :function)
-					'face 'geben-breakpoint-function))
-		    (insert " "))
-		  (when (plist-get bp :exception)
-		    (insert (propertize (plist-get bp :exception)
-					'face 'geben-breakpoint-function))
-		    (insert " "))
-		  (when (plist-get bp :expression)
-		    (insert (format "\"%s\" " (plist-get bp :expression))))
-		  (when (plist-get bp :fileuri)
-		    (insert (format "%s:%s"
-				    (propertize (plist-get bp :fileuri)
-						'face 'geben-breakpoint-fileuri)
-				    (propertize (format "%s" (or (plist-get bp :lineno) "*"))
-						'face 'geben-breakpoint-lineno))))
-		  (insert "\n")
-		  (put-text-property (save-excursion (forward-line -1) (point))
-				     (point)
-				     'geben-bp bp))
-		breakpoints))
-	(setq header-line-format
-	      (concat "  Type        "
-		      (if (geben-session-active-p session) "Hits  " "")
-		      "Property"))
-	(goto-char (point-min))))
+        (erase-buffer)
+        (if (or (not (listp breakpoints))
+                (zerop (length breakpoints)))
+            (insert "No breakpoints.\n")
+          (setq breakpoints (sort (cl-copy-list breakpoints)
+                                  #'geben-breakpoint-sort-pred))
+          (mapc (lambda (bp)
+                  (insert "  ")
+                  (insert (format "%-11s"
+                                  (or (cl-case (plist-get bp :type)
+                                        (:line "Line")
+                                        (:exception "Exception")
+                                        (:call "Call")
+                                        (:return "Return")
+                                        (:conditional "Conditional")
+                                        (:watch "Watch"))
+                                      "Unknown")))
+                  (if (geben-session-active-p session)
+                      (insert (format "%2s/%-2s  "
+                                      (or (plist-get bp :hit-count) "?")
+                                      (let ((hit-value (plist-get bp :hit-value)))
+                                        (cond
+                                         ((null hit-value) "?")
+                                         ((zerop hit-value) "*")
+                                         (t hit-value)))))
+                    (insert " "))
+                  (when (plist-get bp :function)
+                    (insert (propertize (plist-get bp :function)
+                                        'face 'geben-breakpoint-function))
+                    (insert " "))
+                  (when (plist-get bp :exception)
+                    (insert (propertize (plist-get bp :exception)
+                                        'face 'geben-breakpoint-function))
+                    (insert " "))
+                  (when (plist-get bp :expression)
+                    (insert (format "\"%s\" " (plist-get bp :expression))))
+                  (when (plist-get bp :fileuri)
+                    (insert (format "%s:%s"
+                                    (propertize (plist-get bp :fileuri)
+                                                'face 'geben-breakpoint-fileuri)
+                                    (propertize (format "%s" (or (plist-get bp :lineno) "*"))
+                                                'face 'geben-breakpoint-lineno))))
+                  (insert "\n")
+                  (put-text-property (save-excursion (forward-line -1) (point))
+                                     (point)
+                                     'geben-bp bp))
+                breakpoints))
+        (setq header-line-format
+              (concat "  Type        "
+                      (if (geben-session-active-p session) "Hits  " "")
+                      "Property"))
+        (goto-char (point-min))))
     (save-selected-window
       (geben-dbgp-display-window buf))))
 
@@ -1721,10 +1721,10 @@ Key mapping and other information is described its help page."
   "Create an overlay for a breakpoint BP."
   (geben-bp-finalize bp)
   (let* ((local-path (plist-get bp :local-path))
-	 (overlay (and (stringp local-path)
-		       (find-buffer-visiting local-path)
-		       (geben-overlay-make-line (plist-get bp :lineno)
-						(find-buffer-visiting local-path)))))
+         (overlay (and (stringp local-path)
+                       (find-buffer-visiting local-path)
+                       (geben-overlay-make-line (plist-get bp :lineno)
+                                                (find-buffer-visiting local-path)))))
     (when overlay
       (overlay-put overlay 'face 'geben-breakpoint-face)
       (overlay-put overlay 'evaporate t)
@@ -1737,11 +1737,11 @@ Key mapping and other information is described its help page."
 (defun geben-bp-overlay-hide (session)
   "Hide breakpoint overlays."
   (mapc (lambda (bp)
-	  (let ((overlay (plist-get bp :overlay)))
-	    (and (overlayp overlay)
-		 (overlay-livep overlay)
-		 (overlay-put overlay 'face nil))))
-	(geben-breakpoint-list (geben-session-breakpoint session))))
+          (let ((overlay (plist-get bp :overlay)))
+            (and (overlayp overlay)
+                 (overlay-livep overlay)
+                 (overlay-put overlay 'face nil))))
+        (geben-breakpoint-list (geben-session-breakpoint session))))
 
 (defun geben-bp-overlay-modified (overlay afterp beg end &optional len)
   "A callback function invoked when inside of an overlay is modified.
@@ -1749,46 +1749,46 @@ With this callback GEBEN tracks displacements of line breakpoints."
   (when afterp
     (save-excursion
       (save-restriction
-	(widen)
-	(let* ((lineno-from (progn (goto-char (overlay-start overlay))
-				   (geben-what-line)))
-	       (lineno-to (progn (goto-char (overlay-end overlay))
-				 (geben-what-line)))
-	       (lineno lineno-from))
-	  (goto-line lineno)
-	  (while (and (looking-at "[ \t]*$")
-		      (< lineno lineno-to))
-	    (forward-line)
-	    (cl-incf lineno))
-	  (if (< lineno-from lineno)
-	      (plist-put (overlay-get overlay 'bp) :lineno lineno))
-	  (goto-line lineno)
-	  (beginning-of-line)
-	  (move-overlay overlay (point) (save-excursion
-					  (forward-line)
-					  (point))))))))
+        (widen)
+        (let* ((lineno-from (progn (goto-char (overlay-start overlay))
+                                   (geben-what-line)))
+               (lineno-to (progn (goto-char (overlay-end overlay))
+                                 (geben-what-line)))
+               (lineno lineno-from))
+          (goto-line lineno)
+          (while (and (looking-at "[ \t]*$")
+                      (< lineno lineno-to))
+            (forward-line)
+            (cl-incf lineno))
+          (if (< lineno-from lineno)
+              (plist-put (overlay-get overlay 'bp) :lineno lineno))
+          (goto-line lineno)
+          (beginning-of-line)
+          (move-overlay overlay (point) (save-excursion
+                                          (forward-line)
+                                          (point))))))))
 
 (defun geben-bp-overlay-inserted-in-front (overlay afterp beg end &optional len)
   "A callback function invoked when text in front of an overlay is modified.
 With this callback GEBEN tracks displacements of line breakpoints."
   (if afterp
       (save-excursion
-	(goto-line (progn (goto-char (overlay-start overlay))
-			  (geben-what-line)))
-	(move-overlay overlay (point) (save-excursion
-					(forward-line)
-					(point))))))
+        (goto-line (progn (goto-char (overlay-start overlay))
+                          (geben-what-line)))
+        (move-overlay overlay (point) (save-excursion
+                                        (forward-line)
+                                        (point))))))
 
 (defun geben-bp-overlay-restore (session buf)
   "A callback function invoked when emacs visits a new file.
 GEBEN may place overlay markers if there are line breakpoints in
 the file."
   (mapc (lambda (bp)
-	  (and (plist-get bp :lineno)
-	       (eq buf (find-buffer-visiting (or (plist-get bp :local-path)
-						 "")))
-	       (geben-bp-overlay-setup bp)))
-	(geben-breakpoint-list (geben-session-breakpoint session))))
+          (and (plist-get bp :lineno)
+               (eq buf (find-buffer-visiting (or (plist-get bp :local-path)
+                                                 "")))
+               (geben-bp-overlay-setup bp)))
+        (geben-breakpoint-list (geben-session-breakpoint session))))
 
 (defun geben-session-breakpoint-init (session)
   (setf (geben-session-breakpoint session) (geben-breakpoint-make))
@@ -1805,20 +1805,20 @@ the file."
 (defun geben-dbgp-breakpoint-store-types (session cmd msg err)
   (when (equal "1" (xml-get-attribute msg 'supported))
     (let ((types (mapcar
-		  (lambda (type)
-		    (intern (concat ":" type)))
-		  (split-string (or (car (xml-node-children msg))
-				    "")
-				" "))))
+                  (lambda (type)
+                    (intern (concat ":" type)))
+                  (split-string (or (car (xml-node-children msg))
+                                    "")
+                                " "))))
       (if (geben-session-xdebug-p session)
-	  ;; Xdebug 2.0.3 supports the following types but they aren't
-	  ;; included in the response. Push them in the list manually.
-	  (setq types (append types '(:exception :conditional))))
+          ;; Xdebug 2.0.3 supports the following types but they aren't
+          ;; included in the response. Push them in the list manually.
+          (setq types (append types '(:exception :conditional))))
       (unless types
-	;; Some debugger engines are buggy;
-	;; they don't return breakpoint types correctly.
-	;; To them put all of types to the list.
-	(setq types '(:line :call :return :exception :conditional :watch)))
+        ;; Some debugger engines are buggy;
+        ;; they don't return breakpoint types correctly.
+        ;; To them put all of types to the list.
+        (setq types '(:line :call :return :exception :conditional :watch)))
       (setf (geben-breakpoint-types (geben-session-breakpoint session)) types))))
 
 (add-hook 'geben-source-visit-hook #'geben-bp-overlay-restore)
@@ -1831,82 +1831,82 @@ the file."
       (geben-session-breakpoint-add session bp)
     (let ((obp (geben-session-breakpoint-find session bp)))
       (if (and obp
-	       (plist-get obp :id))
-	  (geben-dbgp-send-command session "breakpoint_update"
-				   (cons "-d" (plist-get obp :id))
-				   (cons "-h" (or (plist-get bp :hit-value)
-						  0))
-				   (cons "-o" ">="))
-	(let ((params
-	       (remove nil
-		       (list
-			(cons "-t"
-			      (substring (symbol-name (plist-get bp :type)) 1))
-			(and (plist-get bp :fileuri)
-			     (cons "-f" (plist-get bp :fileuri)))
-			(and (plist-get bp :lineno)
-			     (cons "-n" (plist-get bp :lineno)))
-			(and (plist-get bp :class)
-			     (geben-session-xdebug-p session)
-			     (cons "-a" (plist-get bp :class)))
-			(and (plist-get bp :function)
-			     (if (and (geben-session-xdebug-p session)
-				      (plist-get bp :method))
-				 (cons "-m" (plist-get bp :method))
-			       (cons "-m" (plist-get bp :function))))
-			(and (plist-get bp :exception)
-			     (cons "-x" (plist-get bp :exception)))
-			(cons "-h" (or (plist-get bp :hit-value) 0))
-			(cons "-o" ">=")
-			(cons "-s" (or (plist-get bp :state)
-				       "enabled"))
-			(cons "-r" (if (plist-get bp :run-once) 1 0))
-			(and (plist-get bp :expression)
-			     (cons "--"
-				   (base64-encode-string
-				    (plist-get bp :expression))))))))
-	  (when params
-	    (apply 'geben-dbgp-send-command session "breakpoint_set" params)))))))
+               (plist-get obp :id))
+          (geben-dbgp-send-command session "breakpoint_update"
+                                   (cons "-d" (plist-get obp :id))
+                                   (cons "-h" (or (plist-get bp :hit-value)
+                                                  0))
+                                   (cons "-o" ">="))
+        (let ((params
+               (remove nil
+                       (list
+                        (cons "-t"
+                              (substring (symbol-name (plist-get bp :type)) 1))
+                        (and (plist-get bp :fileuri)
+                             (cons "-f" (plist-get bp :fileuri)))
+                        (and (plist-get bp :lineno)
+                             (cons "-n" (plist-get bp :lineno)))
+                        (and (plist-get bp :class)
+                             (geben-session-xdebug-p session)
+                             (cons "-a" (plist-get bp :class)))
+                        (and (plist-get bp :function)
+                             (if (and (geben-session-xdebug-p session)
+                                      (plist-get bp :method))
+                                 (cons "-m" (plist-get bp :method))
+                               (cons "-m" (plist-get bp :function))))
+                        (and (plist-get bp :exception)
+                             (cons "-x" (plist-get bp :exception)))
+                        (cons "-h" (or (plist-get bp :hit-value) 0))
+                        (cons "-o" ">=")
+                        (cons "-s" (or (plist-get bp :state)
+                                       "enabled"))
+                        (cons "-r" (if (plist-get bp :run-once) 1 0))
+                        (and (plist-get bp :expression)
+                             (cons "--"
+                                   (base64-encode-string
+                                    (plist-get bp :expression))))))))
+          (when params
+            (apply 'geben-dbgp-send-command session "breakpoint_set" params)))))))
 
 (defun geben-dbgp-response-breakpoint-set (session cmd msg)
   "A response message handler for \`breakpoint_set\' command."
   (unless (eq (geben-cmd-param-get cmd "-r") 1) ; unless :run-once is set
     (let* ((type (intern (concat ":" (geben-cmd-param-get cmd "-t"))))
-	   (id (xml-get-attribute-or-nil msg 'id))
-	   (fileuri (geben-cmd-param-get cmd "-f"))
-	   (lineno (geben-cmd-param-get cmd "-n"))
-	   (function (geben-cmd-param-get cmd "-m"))
-	   (class (geben-cmd-param-get cmd "-a"))
-	   (method function)
-	   (exception (geben-cmd-param-get cmd "-x"))
-	   (expression (geben-cmd-param-get cmd "--"))
-	   (hit-value (geben-cmd-param-get cmd "-h"))
-	   (state (geben-cmd-param-get cmd "-s"))
-	   (local-path (and fileuri
-			    (or (geben-session-source-local-path session fileuri)
-				(geben-source-local-path session fileuri))))
-	   bp)
+           (id (xml-get-attribute-or-nil msg 'id))
+           (fileuri (geben-cmd-param-get cmd "-f"))
+           (lineno (geben-cmd-param-get cmd "-n"))
+           (function (geben-cmd-param-get cmd "-m"))
+           (class (geben-cmd-param-get cmd "-a"))
+           (method function)
+           (exception (geben-cmd-param-get cmd "-x"))
+           (expression (geben-cmd-param-get cmd "--"))
+           (hit-value (geben-cmd-param-get cmd "-h"))
+           (state (geben-cmd-param-get cmd "-s"))
+           (local-path (and fileuri
+                            (or (geben-session-source-local-path session fileuri)
+                                (geben-source-local-path session fileuri))))
+           bp)
       (when expression
-	(setq expression (base64-decode-string expression)))
+        (setq expression (base64-decode-string expression)))
       (geben-session-breakpoint-add session
-				    (setq bp (geben-bp-make session type
-							    :id id
-							    :fileuri fileuri
-							    :lineno lineno
-							    :class class
-							    :method method
-							    :function function
-							    :exception exception
-							    :expression expression
-							    :hit-value hit-value
-							    :local-path local-path
-							    :state state))))
+                                    (setq bp (geben-bp-make session type
+                                                            :id id
+                                                            :fileuri fileuri
+                                                            :lineno lineno
+                                                            :class class
+                                                            :method method
+                                                            :function function
+                                                            :exception exception
+                                                            :expression expression
+                                                            :hit-value hit-value
+                                                            :local-path local-path
+                                                            :state state))))
     (geben-breakpoint-list-refresh)))
 
 (defun geben-dbgp-response-breakpoint-update (session cmd msg)
   "A response message handler for `breakpoint_update' command."
   (let* ((id (geben-cmd-param-get cmd "-d"))
-	 (bp (geben-session-breakpoint-find session id)))
+         (bp (geben-session-breakpoint-find session id)))
     (when bp
       (plist-put bp :hit-value (geben-cmd-param-get cmd "-h"))
       (geben-breakpoint-list-refresh))))
@@ -1917,18 +1917,18 @@ the file."
   "Send `breakpoint_remove' command."
   (if (geben-session-active-p session)
       (geben-dbgp-sequence-bind (bid)
-	(geben-dbgp-send-command session "breakpoint_remove" (cons "-d" bid))
-	(lambda (session cmd msg err)
-	  (when (dbgp-xml-get-error-message msg)
-	    ;; remove a stray breakpoint from hash table.
-	    (geben-session-breakpoint-remove session bid)
-	    (geben-breakpoint-list-refresh))))
+        (geben-dbgp-send-command session "breakpoint_remove" (cons "-d" bid))
+        (lambda (session cmd msg err)
+          (when (dbgp-xml-get-error-message msg)
+            ;; remove a stray breakpoint from hash table.
+            (geben-session-breakpoint-remove session bid)
+            (geben-breakpoint-list-refresh))))
     (geben-session-breakpoint-remove session bid)))
 
 (defun geben-dbgp-response-breakpoint-remove (session cmd msg)
   "A response message handler for \`breakpoint_remove\' command."
   (let* ((id (geben-cmd-param-get cmd "-d"))
-	 (bp (geben-session-breakpoint-find session id)))
+         (bp (geben-session-breakpoint-find session id)))
     (geben-session-breakpoint-remove session id)
     (geben-breakpoint-list-refresh)))
 
@@ -1983,8 +1983,8 @@ the file."
   :group 'geben-highlighting-faces)
 
 (cl-defstruct (geben-context
-	    (:constructor nil)
-	    (:constructor geben-context-make))
+               (:constructor nil)
+               (:constructor geben-context-make))
   names	   ; context names alist(KEY: context name, VALUE: context id)
   tid  ; transaction id to which the current context variables belong.
   variables			;
@@ -2038,8 +2038,8 @@ the file."
 (defsubst geben-session-context-list (session cid)
   "Get context list for the context id CID."
   (assq cid
-	(geben-context-variables
-	 (geben-session-context session))))
+        (geben-context-variables
+         (geben-session-context session))))
 
 (defsubst geben-session-context-list-old (session cid)
   "Get previous context list for the context id CID."
@@ -2052,9 +2052,9 @@ the file."
 (defsubst geben-session-context-list-update (session cid list)
   "Update the current context list for the context id CID with LIST."
   (let* ((clist (geben-session-context-list session cid))
-	 (old (assq 'new clist)))
+         (old (assq 'new clist)))
     (setcdr clist (list (cons 'old (cdr old))
-			(cons 'new list)))))
+                        (cons 'new list)))))
 
 ;; context property list accessors
 
@@ -2070,10 +2070,10 @@ the file."
 (defsubst geben-context-property-format-array-name (property)
   "Format array element name in the debuggee language expression."
   (format "%s[%s]"
-	  (propertize (xml-get-attribute property 'name)
-		      'face 'geben-context-variable-face)
-	  (propertize (xml-get-attribute property 'numchildren)
-		      'face 'geben-context-constant-face)))
+          (propertize (xml-get-attribute property 'name)
+                      'face 'geben-context-variable-face)
+          (propertize (xml-get-attribute property 'numchildren)
+                      'face 'geben-context-constant-face)))
 
 (defsubst geben-context-property-attribute (property sym)
   "Get attribute SYM from PROPERTY."
@@ -2082,9 +2082,9 @@ the file."
   ;; as attributes but child elements."
   (let ((node (car (xml-get-children property sym))))
     (if (consp node)
-	(geben-dbgp-decode-string (xml-node-children node)
-				  (xml-get-attribute node 'encoding)
-				  'utf-8)
+        (geben-dbgp-decode-string (xml-node-children node)
+                                  (xml-get-attribute node 'encoding)
+                                  'utf-8)
       (xml-get-attribute property sym))))
 
 (defsubst geben-context-property-name (property)
@@ -2099,66 +2099,66 @@ the file."
   "Get value from PROPERTY."
   (let ((node (car (xml-get-children property 'value))))
     (if (consp node)
-	(geben-dbgp-decode-string (xml-node-children node)
-				  (xml-get-attribute node 'encoding)
-				  'utf-8)
+        (geben-dbgp-decode-string (xml-node-children node)
+                                  (xml-get-attribute node 'encoding)
+                                  'utf-8)
       (geben-dbgp-decode-string (xml-node-children property)
-				(xml-get-attribute property 'encoding)
-				'utf-8))))
+                                (xml-get-attribute property 'encoding)
+                                'utf-8))))
 
 (defun geben-context-property-typeinfo (property)
   "Get type information of PROPERTY to display it in the context buffer."
   (let ((type (and (xml-get-attribute-or-nil property 'type)
-		   (intern (xml-get-attribute-or-nil property 'type))))
-	typeinfo)
+                   (intern (xml-get-attribute-or-nil property 'type))))
+        typeinfo)
     (setq typeinfo
-	  (cond
-	   ((null type) nil)
-	   ((member type '(int float))
-	    (list :type type
-		  :type-visiblep nil
-		  :value-face 'geben-context-constant-face))
-	   ((eq type 'bool)
-	    (list :type type
-		  :type-visiblep nil
-		  :value-face 'geben-context-constant-face
-		  :value-formatter 'geben-context-property-format-bool))
-	   ((eq type 'string)
-	    (list :type type
-		  :type-visiblep nil
-		  :value-face 'geben-context-string-face))
-	   ((member type '(array hash))
-	    (list :type type
-		  :type-visiblep nil
-		  :name-formatter 'geben-context-property-format-array-name
-		  :value-face 'default
-		  :value-formatter (lambda (value) "")))
-	   ((eq type 'null)
-	    (list :type type
-		  :type-visiblep nil
-		  :value-face 'geben-context-constant-face
-		  :value-formatter (lambda (value) "null")))
-	   ((eq type 'resource)
-	    (list :type type
-		  :type-visiblep t
-		  :value-face 'geben-context-constant-face))
-	   ((eq type 'object)
-	    (list :type (if (xml-get-attribute-or-nil property 'classname)
-			    (intern (xml-get-attribute-or-nil property 'classname))
-			  type)
-		  :type-visiblep t
-		  :type-face 'geben-context-class-face
-		  :value-face 'default))
-	   ((eq type 'uninitialized)
-	    (list :type 'undef
-		  :type-visiblep t
-		  :type-face 'geben-context-type-face
-		  :value-face 'default))
-	   (t
-	    (list :type type
-		  :type-visiblep t
-		  :type-face 'geben-context-type-face
-		  :value-face 'default))))
+          (cond
+           ((null type) nil)
+           ((member type '(int float))
+            (list :type type
+                  :type-visiblep nil
+                  :value-face 'geben-context-constant-face))
+           ((eq type 'bool)
+            (list :type type
+                  :type-visiblep nil
+                  :value-face 'geben-context-constant-face
+                  :value-formatter 'geben-context-property-format-bool))
+           ((eq type 'string)
+            (list :type type
+                  :type-visiblep nil
+                  :value-face 'geben-context-string-face))
+           ((member type '(array hash))
+            (list :type type
+                  :type-visiblep nil
+                  :name-formatter 'geben-context-property-format-array-name
+                  :value-face 'default
+                  :value-formatter (lambda (value) "")))
+           ((eq type 'null)
+            (list :type type
+                  :type-visiblep nil
+                  :value-face 'geben-context-constant-face
+                  :value-formatter (lambda (value) "null")))
+           ((eq type 'resource)
+            (list :type type
+                  :type-visiblep t
+                  :value-face 'geben-context-constant-face))
+           ((eq type 'object)
+            (list :type (if (xml-get-attribute-or-nil property 'classname)
+                            (intern (xml-get-attribute-or-nil property 'classname))
+                          type)
+                  :type-visiblep t
+                  :type-face 'geben-context-class-face
+                  :value-face 'default))
+           ((eq type 'uninitialized)
+            (list :type 'undef
+                  :type-visiblep t
+                  :type-face 'geben-context-type-face
+                  :value-face 'default))
+           (t
+            (list :type type
+                  :type-visiblep t
+                  :type-face 'geben-context-type-face
+                  :value-face 'default))))
     typeinfo))
 
 ;;--------------------------------------------------------------
@@ -2170,56 +2170,56 @@ the file."
   (let ((marker (widget-get tree :from)))
     (when (markerp marker)
       (with-current-buffer (marker-buffer marker)
-	(goto-char marker)
-	(call-interactively 'widget-button-press)
-	(unless (widget-get tree :open)
-	  (call-interactively 'widget-button-press))))))
+        (goto-char marker)
+        (call-interactively 'widget-button-press)
+        (unless (widget-get tree :open)
+          (call-interactively 'widget-button-press))))))
 
 (defun geben-context-property-tree-expand-p (tree)
   "A tree widget callback function to indicate whether TREE is able to expand."
   (or (geben-context-property-tree-has-complete-children tree)
       (and (run-hook-with-args 'geben-context-property-tree-fill-children-hook
-			       tree)
-	   nil)))
+                               tree)
+           nil)))
 
 (defun geben-context-property-tree-expand (tree)
   "A tree widget callback function to create child list of TREE."
   (mapcar #'geben-context-property-tree-create-node
-	  (xml-get-children (widget-get tree :property) 'property)))
+          (xml-get-children (widget-get tree :property) 'property)))
 
 (defun geben-context-property-tree-has-complete-children (tree)
   "Determine whether TREE has complete child nodes.
 Child nodes can be short for :property property of TREE."
   (let* ((property (widget-get tree :property))
-	 (children (xml-get-children property 'property))
-	 (numchildren (and children
-			   (string-to-number (xml-get-attribute property 'numchildren)))))
+         (children (xml-get-children property 'property))
+         (numchildren (and children
+                           (string-to-number (xml-get-attribute property 'numchildren)))))
     (and children
-	 (<= numchildren (length children)))))
+         (<= numchildren (length children)))))
 
 (defun geben-context-property-tree-create-node (property)
   "Create nodes which represent PROPERTY."
   (let* ((typeinfo (geben-context-property-typeinfo property))
-	 (value (geben-context-property-value property))
-	 tag)
+         (value (geben-context-property-value property))
+         tag)
     (let ((formatter (plist-get typeinfo :name-formatter)))
       (setq tag
-	    (if formatter
-		(funcall formatter property)
-	      (propertize (geben-context-property-name property)
-			  'face 'geben-context-variable-face))))
+            (if formatter
+                (funcall formatter property)
+              (propertize (geben-context-property-name property)
+                          'face 'geben-context-variable-face))))
     (when (plist-get typeinfo :type-visiblep)
       (setq tag (concat tag
-			(format "(%s)" (propertize
-					(symbol-name (plist-get typeinfo :type))
-					'face (plist-get typeinfo :type-face))))))
+                        (format "(%s)" (propertize
+                                        (symbol-name (plist-get typeinfo :type))
+                                        'face (plist-get typeinfo :type-face))))))
     (let ((formatter (plist-get typeinfo :value-formatter)))
       (when (or value formatter)
-	(setq tag (format "%-32s %s" tag
-			  (propertize (if formatter
-					  (funcall formatter value)
-					value)
-				      'face (plist-get typeinfo :value-face))))))
+        (setq tag (format "%-32s %s" tag
+                          (propertize (if formatter
+                                          (funcall formatter value)
+                                        value)
+                                      'face (plist-get typeinfo :value-face))))))
     (if (geben-context-property-has-children property)
         (list 'tree-widget
               :tag tag
@@ -2235,7 +2235,7 @@ Child nodes can be short for :property property of TREE."
   (when tree
     (let ((cid (widget-get tree :context-id)))
       (or cid
-	  (geben-context-property-tree-context-id (widget-get tree :parent))))))
+          (geben-context-property-tree-context-id (widget-get tree :parent))))))
 
 ;;--------------------------------------------------------------
 ;; context functions
@@ -2247,10 +2247,10 @@ After fetching it calls CALLBACK function."
   (let ((context (geben-session-context session)))
     (when (geben-context-names context)
       (unless (geben-context-variables context)
-	(setf (geben-context-variables context)
-	      (mapcar (lambda (context)
-			(list (cdr context)))
-		      (geben-context-names context))))
+        (setf (geben-context-variables context)
+              (mapcar (lambda (context)
+                        (list (cdr context)))
+                      (geben-context-names context))))
       ;; Remain the current tid.
       ;; It is possible that the current context proceeds by step_in or
       ;; other continuous commands while retrieving variables.
@@ -2258,34 +2258,34 @@ After fetching it calls CALLBACK function."
       ;; tid, and check the value in the retrieving process.
       (setf (geben-context-tid context) (geben-session-tid session))
       (geben-context-list-fetch-loop session
-				     (geben-context-tid context)
-				     (geben-context-depth context)
-				     (mapcar (lambda (context)
-					       (cdr context))
-					     (geben-context-names context))
-				     callback))))
+                                     (geben-context-tid context)
+                                     (geben-context-depth context)
+                                     (mapcar (lambda (context)
+                                               (cdr context))
+                                             (geben-context-names context))
+                                     callback))))
 
 (defun geben-context-list-fetch-loop (session tid-save depth context-id-list callback)
   (let ((buf (geben-session-context-buffer-get session)))
     (when buf
       (with-current-buffer buf
-	(setq geben-context-loading t))
+        (setq geben-context-loading t))
       (geben-dbgp-sequence-bind (tid-save depth context-id-list callback)
-	(geben-dbgp-command-context-get session (car context-id-list) depth)
-	(lambda (session cmd msg err)
-	  (when (and (not err)
-		     (eq tid-save (geben-session-context-tid session))
-		     (geben-session-context-buffer-live-p session))
-	    (geben-session-context-list-update session
-					       (geben-cmd-param-get cmd "-c")
-					       (xml-get-children msg 'property))
-	    (if (cdr context-id-list)
-		(geben-context-list-fetch-loop session tid-save depth
-					       (cdr context-id-list) callback)
-	      (geben-context-fill-buffer session)
-	      (with-current-buffer (geben-session-context-buffer-get session)
-		(setq geben-context-loading nil))
-	      (funcall callback session))))))))
+        (geben-dbgp-command-context-get session (car context-id-list) depth)
+        (lambda (session cmd msg err)
+          (when (and (not err)
+                     (eq tid-save (geben-session-context-tid session))
+                     (geben-session-context-buffer-live-p session))
+            (geben-session-context-list-update session
+                                               (geben-cmd-param-get cmd "-c")
+                                               (xml-get-children msg 'property))
+            (if (cdr context-id-list)
+                (geben-context-list-fetch-loop session tid-save depth
+                                               (cdr context-id-list) callback)
+              (geben-context-fill-buffer session)
+              (with-current-buffer (geben-session-context-buffer-get session)
+                (setq geben-context-loading nil))
+              (funcall callback session))))))))
 
 (defun geben-context-fill-buffer (session)
   "Fill the context buffer with locally stored context list.
@@ -2311,45 +2311,45 @@ Example: Locals, Superglobals"
 (defun geben-context-tree-children-fill (tree &optional tid-save)
   (geben-with-current-session session
     (let ((tid-save (or tid-save
-			(geben-session-context-tid session)))
-	  (completed (geben-context-property-tree-has-complete-children tree))
-	  (buf (geben-session-context-buffer-get session)))
+                        (geben-session-context-tid session)))
+          (completed (geben-context-property-tree-has-complete-children tree))
+          (buf (geben-session-context-buffer-get session)))
       (when (and (buffer-live-p buf)
-		 (eq tid-save (geben-session-context-tid session)))
-	(with-current-buffer buf
-	    (setq geben-context-loading (not completed)))
-	(if completed
-	    (geben-context-property-tree-open tree)
-	  (geben-context-tree-children-fill-1 session tree tid-save))))))
+                 (eq tid-save (geben-session-context-tid session)))
+        (with-current-buffer buf
+          (setq geben-context-loading (not completed)))
+        (if completed
+            (geben-context-property-tree-open tree)
+          (geben-context-tree-children-fill-1 session tree tid-save))))))
 
 (defun geben-context-tree-children-fill-1 (session tree tid-save)
   (let* ((property (widget-get tree :property))
-	 (children (xml-get-children property 'property)))
+         (children (xml-get-children property 'property)))
     (with-current-buffer (geben-session-context-buffer-get session)
       ;; -- comment on :property-page property --
       ;; debugger engine may lack of PAGESIZE in property message(bug).
       ;; so the following code doesn't rely on PAGESIZE but uses own
       ;; :property-page widget property.
       (let* ((nextpage (if (widget-get tree :property-page)
-			   (1+ (widget-get tree :property-page))
-			 (if children 1 0)))
-	     (args (list :depth (geben-session-context-depth session)
-			 :context-id (geben-context-property-tree-context-id tree)
-			 :name (geben-context-property-fullname property)
-			 :page nextpage)))
-	(widget-put tree :property-page nextpage)
-	(when (xml-get-attribute-or-nil property 'key)
-	  (plist-put args :key (xml-get-attribute-or-nil property 'key)))
-	(geben-dbgp-sequence-bind (tree tid-save)
-	  (geben-dbgp-command-property-get session args)
-	  (lambda (session cmd msg err)
-	    (unless err
-	      (geben-context-tree-children-append session
-						  tid-save
-						  tree
-						  (car (xml-get-children msg 'property)))
-	      (geben-context-tree-children-fill tree
-						tid-save))))))))
+                           (1+ (widget-get tree :property-page))
+                         (if children 1 0)))
+             (args (list :depth (geben-session-context-depth session)
+                         :context-id (geben-context-property-tree-context-id tree)
+                         :name (geben-context-property-fullname property)
+                         :page nextpage)))
+        (widget-put tree :property-page nextpage)
+        (when (xml-get-attribute-or-nil property 'key)
+          (plist-put args :key (xml-get-attribute-or-nil property 'key)))
+        (geben-dbgp-sequence-bind (tree tid-save)
+          (geben-dbgp-command-property-get session args)
+          (lambda (session cmd msg err)
+            (unless err
+              (geben-context-tree-children-append session
+                                                  tid-save
+                                                  tree
+                                                  (car (xml-get-children msg 'property)))
+              (geben-context-tree-children-fill tree
+                                                tid-save))))))))
 
 (defun geben-tree-widget-notify (widget-tree)
   "Takes WIDGET-TREE and gathers the address of the variable just expanded/collapsed,
@@ -2363,14 +2363,14 @@ Example: Locals, Superglobals"
 (defun geben-context-tree-children-append (session tid-save tree property)
   (if (eq tid-save (geben-session-context-tid session))
       (let ((tree-prop (widget-get tree :property)))
-	(nconc (or (cddr tree-prop)
-		   tree-prop)
-	       (cddr property)))))
+        (nconc (or (cddr tree-prop)
+                   tree-prop)
+               (cddr property)))))
 
 (defun geben-context-list-refresh (session depth &optional force)
   (when (and (geben-session-active-p session)
-	     (or force
-		 (geben-session-context-buffer-visible-p session)))
+             (or force
+                 (geben-session-context-buffer-visible-p session)))
     (geben-context-list-display session depth (not force))))
 
 (defun geben-context-list-display (session depth &optional no-select)
@@ -2378,22 +2378,22 @@ Example: Locals, Superglobals"
   (unless (geben-session-active-p session)
     (error "GEBEN is out of debugging session."))
   (when (or (< depth 0)
-	    (< (length (geben-session-stack session)) (1+ depth)))
+            (< (length (geben-session-stack session)) (1+ depth)))
     (error "GEBEN context display: invalid depth: %S" depth))
   (setf (geben-context-depth (geben-session-context session)) depth)
   (let ((buf (geben-session-context-buffer session)))
     (with-current-buffer buf
-	(setq geben-context-where
-	      (xml-get-attribute (nth depth (geben-session-stack session))
-				 'where)))
+      (setq geben-context-where
+            (xml-get-attribute (nth depth (geben-session-stack session))
+                               'where)))
     (unless no-select
       (geben-dbgp-display-window buf))
     (geben-context-list-fetch session
-			      (geben-lexical-bind (buf no-select)
-				(lambda (session)
-				  (and (buffer-live-p buf)
-				       (not no-select)
-				       (geben-dbgp-display-window buf)))))))
+                              (geben-lexical-bind (buf no-select)
+                                (lambda (session)
+                                  (and (buffer-live-p buf)
+                                       (not no-select)
+                                       (geben-dbgp-display-window buf)))))))
 
 ;;--------------------------------------------------------------
 ;; context mode
@@ -2429,23 +2429,23 @@ The buffer commands are:
     (setq major-mode 'geben-context-mode)
     (setq mode-name "GEBEN context")
     (set (make-local-variable 'revert-buffer-function)
-	 (lambda (a b) nil))
+         (lambda (a b) nil))
     (and (fboundp 'font-lock-defontify)
-	 (add-hook 'change-major-mode-hook 'font-lock-defontify nil t))
+         (add-hook 'change-major-mode-hook 'font-lock-defontify nil t))
     (if (fboundp 'run-mode-hooks)
-	(run-mode-hooks 'geben-context-mode-hook)
+        (run-mode-hooks 'geben-context-mode-hook)
       (run-hooks 'geben-context-mode-hook))
     (buffer-disable-undo)
     (set (make-local-variable 'geben-context-where) "")
     (set (make-local-variable 'geben-context-loading) nil)
     (set (make-local-variable 'tree-widget-theme) "geben")
     (setq header-line-format
-	  (list
-	   "Where: "
-	   'geben-context-where
-	   "   "
-	   '(geben-context-loading "(loading...)")
-	   ))
+          (list
+           "Where: "
+           'geben-context-where
+           "   "
+           '(geben-context-loading "(loading...)")
+           ))
     (setq buffer-read-only t))
   (set (make-local-variable 'geben-current-session) session))
 
@@ -2454,8 +2454,8 @@ The buffer commands are:
   (interactive)
   (geben-with-current-session session
     (geben-context-list-refresh session
-				(geben-session-context-depth session)
-				force)))
+                                (geben-session-context-depth session)
+                                force)))
 
 (defun geben-context-mode-help ()
   "Display description and key bindings of `geben-context-mode'."
@@ -2466,34 +2466,34 @@ The buffer commands are:
 
 (defun geben-dbgp-command-context-names (session &optional depth)
   (geben-dbgp-send-command session "context_names"
-			   (and (numberp depth)
-				(cons "-d" depth))))
+                           (and (numberp depth)
+                                (cons "-d" depth))))
 
 (defun geben-dbgp-response-context-names (session cmd msg)
   (setf (geben-context-names (geben-session-context session))
-	(mapcar (lambda (context)
-		  (let ((name (xml-get-attribute context 'name))
-			(id (xml-get-attribute context 'id)))
-		    (cons name (string-to-number id))))
-		(xml-get-children msg 'context))))
+        (mapcar (lambda (context)
+                  (let ((name (xml-get-attribute context 'name))
+                        (id (xml-get-attribute context 'id)))
+                    (cons name (string-to-number id))))
+                (xml-get-children msg 'context))))
 
 ;; context
 
 (defun geben-dbgp-command-context-get (session context-id &optional depth)
   (geben-dbgp-send-command session "context_get"
-			   (cons "-c" context-id)
-			   (and depth
-				(cons "-d" depth))))
+                           (cons "-c" context-id)
+                           (and depth
+                                (cons "-d" depth))))
 
 ;; property
 
 (defun geben-dbgp-command-property-get (session &rest args)
   (apply 'geben-dbgp-send-command session "property_get"
-	 (mapcar (lambda (key)
-		   (let ((arg (plist-get (car args) key)))
-		     (when arg
-		       (cons (geben-cmd-param-for key) arg))))
-		 '(:depth :context-id :name :max-data-size :type :page :key :address))))
+         (mapcar (lambda (key)
+                   (let ((arg (plist-get (car args) key)))
+                     (when arg
+                       (cons (geben-cmd-param-for key) arg))))
+                 '(:depth :context-id :name :max-data-size :type :page :key :address))))
 
 
 ;;==============================================================
@@ -2531,24 +2531,24 @@ The buffer commands are:
     (error "GEBEN is out of debugging session."))
   (with-current-buffer (geben-backtrace-buffer session)
     (let ((inhibit-read-only t)
-	  (stack (geben-session-stack session)))
+          (stack (geben-session-stack session)))
       (erase-buffer)
       (dotimes (i (length stack))
-	(let* ((stack (nth i stack))
-	       (fileuri (geben-source-fileuri-regularize (xml-get-attribute stack 'filename)))
-	       (lineno (xml-get-attribute stack 'lineno))
-	       (where (xml-get-attribute stack 'where))
-	       (level (xml-get-attribute stack 'level)))
-	  (insert (format "%s:%s %s\n"
-			  (propertize fileuri 'face "geben-backtrace-fileuri")
-			  (propertize lineno 'face "geben-backtrace-lineno")
-			  where))
-	  (put-text-property (save-excursion (forward-line -1) (point))
-			     (point)
-			     'geben-stack-frame
-			     (list :fileuri fileuri
-				   :lineno lineno
-				   :level (string-to-number level)))))
+        (let* ((stack (nth i stack))
+               (fileuri (geben-source-fileuri-regularize (xml-get-attribute stack 'filename)))
+               (lineno (xml-get-attribute stack 'lineno))
+               (where (xml-get-attribute stack 'where))
+               (level (xml-get-attribute stack 'level)))
+          (insert (format "%s:%s %s\n"
+                          (propertize fileuri 'face "geben-backtrace-fileuri")
+                          (propertize lineno 'face "geben-backtrace-lineno")
+                          where))
+          (put-text-property (save-excursion (forward-line -1) (point))
+                             (point)
+                             'geben-stack-frame
+                             (list :fileuri fileuri
+                                   :lineno lineno
+                                   :level (string-to-number level)))))
       (goto-char (point-min)))
     (geben-dbgp-display-window (geben-backtrace-buffer session))))
 
@@ -2556,15 +2556,15 @@ The buffer commands are:
   "Keymap for `geben-backtrace-mode'")
 (unless geben-backtrace-mode-map
   (setq geben-backtrace-mode-map
-	(let ((map (make-sparse-keymap)))
-	  (define-key map [mouse-2] 'geben-backtrace-mode-mouse-goto)
-	  (define-key map "\C-m" 'geben-backtrace-mode-goto)
-	  (define-key map "q" 'geben-quit-window)
-	  (define-key map "p" 'previous-line)
-	  (define-key map "n" 'next-line)
-	  (define-key map "v" 'geben-backtrace-mode-context)
-	  (define-key map "?" 'geben-backtrace-mode-help)
-	  map)))
+        (let ((map (make-sparse-keymap)))
+          (define-key map [mouse-2] 'geben-backtrace-mode-mouse-goto)
+          (define-key map "\C-m" 'geben-backtrace-mode-goto)
+          (define-key map "q" 'geben-quit-window)
+          (define-key map "p" 'previous-line)
+          (define-key map "n" 'next-line)
+          (define-key map "v" 'geben-backtrace-mode-context)
+          (define-key map "?" 'geben-backtrace-mode-help)
+          map)))
 
 (defun geben-backtrace-mode (session)
   "Major mode for GEBEN's backtrace output.
@@ -2577,13 +2577,13 @@ The buffer commands are:
     (setq major-mode 'geben-backtrace-mode)
     (setq mode-name "GEBEN backtrace")
     (set (make-local-variable 'revert-buffer-function)
-	 (lambda (a b) nil))
+         (lambda (a b) nil))
     (and (fboundp 'font-lock-defontify)
-	 (add-hook 'change-major-mode-hook 'font-lock-defontify nil t))
+         (add-hook 'change-major-mode-hook 'font-lock-defontify nil t))
     (setq buffer-read-only t)
     (buffer-disable-undo)
     (if (fboundp 'run-mode-hooks)
-	(run-mode-hooks 'geben-backtrace-mode-hook)
+        (run-mode-hooks 'geben-backtrace-mode-hook)
       (run-hooks 'geben-backtrace-mode-hook)))
   (set (make-local-variable 'geben-current-session) session))
 
@@ -2623,8 +2623,8 @@ The buffer commands are:
   (geben-with-current-session session
     (let ((stack (get-text-property (point) 'geben-stack-frame)))
       (when stack
-	(run-hook-with-args 'geben-dbgp-stack-update-hook
-			    session (plist-get stack :level))))))
+        (run-hook-with-args 'geben-dbgp-stack-update-hook
+                            session (plist-get stack :level))))))
 
 ;;; stack_get
 
@@ -2634,17 +2634,17 @@ The buffer commands are:
 
 (defun geben-dbgp-stack-update (session)
   (geben-dbgp-sequence
-    (geben-dbgp-command-stack-get session)
+      (geben-dbgp-command-stack-get session)
     (lambda (session cmd msg err)
       (unless err
-	(setf (geben-session-stack session) (xml-get-children msg 'stack))
-	(let* ((stack (car (xml-get-children msg 'stack)))
-	       (fileuri (xml-get-attribute-or-nil stack 'filename))
-	       (lineno (xml-get-attribute-or-nil stack 'lineno)))
-	  (and fileuri lineno
-	       (geben-session-cursor-update session fileuri lineno)))
-	(run-hook-with-args 'geben-dbgp-stack-update-hook
-			    session 0)))))
+        (setf (geben-session-stack session) (xml-get-children msg 'stack))
+        (let* ((stack (car (xml-get-children msg 'stack)))
+               (fileuri (xml-get-attribute-or-nil stack 'filename))
+               (lineno (xml-get-attribute-or-nil stack 'lineno)))
+          (and fileuri lineno
+               (geben-session-cursor-update session fileuri lineno)))
+        (run-hook-with-args 'geben-dbgp-stack-update-hook
+                            session 0)))))
 
 
 ;;==============================================================
@@ -2659,8 +2659,8 @@ The buffer commands are:
   "Name for the debuggee script's STDERR redirection buffer.")
 
 (cl-defstruct (geben-redirect
-	    (:constructor nil)
-	    (:constructor geben-redirect-make))
+               (:constructor nil)
+               (:constructor geben-redirect-make))
   (stdout :redirect)
   (stderr :redirect)
   (combine t)
@@ -2676,10 +2676,10 @@ The buffer commands are:
   (dolist (type '(:stdout :stderr))
     (let ((buf (get-buffer (geben-session-redirect-buffer-name session type))))
       (when (buffer-live-p buf)
-	(with-current-buffer buf
-	  (let ((inhibit-read-only t)
-		(inhibit-modification-hooks t))
-	    (erase-buffer)))))))
+        (with-current-buffer buf
+          (let ((inhibit-read-only t)
+                (inhibit-modification-hooks t))
+            (erase-buffer)))))))
 
 (add-hook 'geben-session-enter-hook #'geben-session-redirect-init)
 
@@ -2687,41 +2687,41 @@ The buffer commands are:
   (let ((bufname (geben-session-redirect-buffer-name session type)))
     (when bufname
       (or (get-buffer bufname)
-	  (with-current-buffer (get-buffer-create bufname)
-	    (unless (local-variable-p 'geben-dynamic-property-buffer-p)
-	      (set (make-local-variable 'geben-dynamic-property-buffer-p) t)
-	      (setq buffer-undo-list t)
-	      (run-hook-with-args 'geben-dbgp-redirect-buffer-init-hook (current-buffer)))
-	    (current-buffer))))))
+          (with-current-buffer (get-buffer-create bufname)
+            (unless (local-variable-p 'geben-dynamic-property-buffer-p)
+              (set (make-local-variable 'geben-dynamic-property-buffer-p) t)
+              (setq buffer-undo-list t)
+              (run-hook-with-args 'geben-dbgp-redirect-buffer-init-hook (current-buffer)))
+            (current-buffer))))))
 
 (defun geben-session-redirect-buffer-name (session type)
   "Select buffer name for a redirection type."
   (let ((redirect (geben-session-redirect session)))
     (when (or (and (eq type :stdout)
-		   (geben-redirect-stdout redirect))
-	      (and (eq type :stderr)
-		   (geben-redirect-stderr redirect)))
+                   (geben-redirect-stdout redirect))
+              (and (eq type :stderr)
+                   (geben-redirect-stderr redirect)))
       (geben-session-buffer-name session
-				 (cond
-				  ((geben-redirect-combine redirect)
-				   geben-redirect-combine-buffer-name)
-				  ((eq :stdout type)
-				   geben-redirect-stdout-buffer-name)
-				  (t
-				   geben-redirect-stderr-buffer-name))))))
+                                 (cond
+                                  ((geben-redirect-combine redirect)
+                                   geben-redirect-combine-buffer-name)
+                                  ((eq :stdout type)
+                                   geben-redirect-stdout-buffer-name)
+                                  (t
+                                   geben-redirect-stderr-buffer-name))))))
 
 (defun geben-session-redirect-buffer-existp (session)
   "Check whether any redirection buffer exists."
   (let (name)
     (or (and (setq name (geben-session-redirect-buffer-name session :stdout))
-	     (get-buffer name))
-	(and (setq name (geben-session-redirect-buffer-name session :stderr))
-	     (get-buffer name)))))
+             (get-buffer name))
+        (and (setq name (geben-session-redirect-buffer-name session :stderr))
+             (get-buffer name)))))
 
 (defun geben-dbgp-redirect-init (session)
   "Initialize redirection related variables."
   (let ((stdout (geben-redirect-stdout (geben-session-redirect session)))
-	(stderr (geben-redirect-stderr (geben-session-redirect session))))
+        (stderr (geben-redirect-stderr (geben-session-redirect session))))
     (when stdout
       (geben-dbgp-command-stdout session stdout))
     (when stderr
@@ -2730,28 +2730,28 @@ The buffer commands are:
 (defun geben-dbgp-handle-stream (session msg)
   "Handle a stream message."
   (let ((type (cl-case (intern-soft (xml-get-attribute msg 'type))
-		('stdout :stdout)
-		('stderr :stderr)))
-	(encoding (xml-get-attribute msg 'encoding))
-	(content (car (last msg))))
+                ('stdout :stdout)
+                ('stderr :stderr)))
+        (encoding (xml-get-attribute msg 'encoding))
+        (content (car (last msg))))
     (geben-dbgp-redirect-stream session type encoding content)))
 
 (defun geben-dbgp-redirect-stream (session type encoding content)
   "Print redirected string to specific buffers."
   (let ((buf (geben-session-redirect-buffer session type))
-	save-pos)
+        save-pos)
     (when buf
       (with-current-buffer buf
-	(setq save-pos (unless (eobp) (point)))
-	(save-excursion
-	  (goto-char (point-max))
-	  (insert (decode-coding-string
-		   (if (string= "base64" encoding)
-		       (base64-decode-string content)
-		     content)
-		   (geben-redirect-coding-system (geben-session-redirect session)))))
-	(goto-char (or save-pos
-		       (point-max))))
+        (setq save-pos (unless (eobp) (point)))
+        (save-excursion
+          (goto-char (point-max))
+          (insert (decode-coding-string
+                   (if (string= "base64" encoding)
+                       (base64-decode-string content)
+                     content)
+                   (geben-redirect-coding-system (geben-session-redirect session)))))
+        (goto-char (or save-pos
+                       (point-max))))
       (when geben-show-redirect-buffers
         (geben-dbgp-display-window buf)))))
 
@@ -2764,10 +2764,10 @@ The buffer commands are:
 (defun geben-dbgp-response-stdout (session cmd msg)
   "A response message handler for `stdout' command."
   (setf (geben-redirect-stdout (geben-session-redirect session))
-	(cl-case (geben-cmd-param-get cmd "-c")
-	  (0 nil)
-	  (1 :redirect)
-	  (2 :intercept))))
+        (cl-case (geben-cmd-param-get cmd "-c")
+          (0 nil)
+          (1 :redirect)
+          (2 :intercept))))
 
 (defun geben-dbgp-command-stderr (session mode)
   "Send `stderr' command."
@@ -2778,10 +2778,10 @@ The buffer commands are:
 (defun geben-dbgp-response-stderr (session cmd msg)
   "A response message handler for `stderr' command."
   (setf (geben-redirect-stderr (geben-session-redirect session))
-	(cl-case (geben-cmd-param-get cmd "-c")
-	  (0 nil)
-	  (1 :redirect)
-	  (2 :intercept))))
+        (cl-case (geben-cmd-param-get cmd "-c")
+          (0 nil)
+          (1 :redirect)
+          (2 :intercept))))
 
 
 ;;==============================================================
@@ -2885,26 +2885,26 @@ The buffer commands are:
 Parse STRING, find xml chunks, convert them to xmlized lisp objects
 and call `geben-dbgp-entry' with each chunk."
   (let ((session (dbgp-plist-get proc :session))
-	xml output)
+        xml output)
     (with-temp-buffer
       (insert string)
       (setq output
-	    (or (ignore-errors
-		  (setq xml (xml-parse-region (point-min) (point-max)))
-		  (goto-char (point-min))
-		  (when (re-search-forward "\\?>" nil t)
-		    (delete-region (match-end 0) (point-max))
-		    (insert "\n")
-		    (xml-print xml)
-		    (propertize (buffer-string)
-				'front-sticky t
-				'font-lock-face 'dbgp-response-face)))
-		string)))
+            (or (ignore-errors
+                  (setq xml (xml-parse-region (point-min) (point-max)))
+                  (goto-char (point-min))
+                  (when (re-search-forward "\\?>" nil t)
+                    (delete-region (match-end 0) (point-max))
+                    (insert "\n")
+                    (xml-print xml)
+                    (propertize (buffer-string)
+                                'front-sticky t
+                                'font-lock-face 'dbgp-response-face)))
+                string)))
     (when xml
       (condition-case error-sexp
-	  (geben-dbgp-entry session (car xml))
-	(error
-	 (warn "GEBEN internal error: %S" error-sexp))))
+          (geben-dbgp-entry session (car xml))
+        (error
+         (warn "GEBEN internal error: %S" error-sexp))))
     output))
 
 (defun geben-dbgp-session-sentinel (proc string)
@@ -2913,14 +2913,14 @@ and call `geben-dbgp-entry' with each chunk."
   (let ((session (dbgp-plist-get proc :session)))
     (when session
       (ignore-errors
-	(geben-session-release session))
+        (geben-session-release session))
       (accept-process-output)
       (setq geben-sessions (remq session geben-sessions)))))
 
 (add-hook 'kill-emacs-hook (lambda ()
-			     (dolist (session geben-sessions)
-			       (ignore-errors
-				(geben-session-release session)))))
+                             (dolist (session geben-sessions)
+                               (ignore-errors
+                                 (geben-session-release session)))))
 
 
 ;;==============================================================
@@ -2939,13 +2939,13 @@ and call `geben-dbgp-entry' with each chunk."
       (geben-dbgp-send-command session "status")
     (lambda (session cmd msg err)
       (unless err
-	(if (not geben-pause-at-entry-line)
-	    (geben-dbgp-command-run session)
-	  (if (and (equal "break" (xml-get-attribute msg 'status))
-		   (not (member (geben-session-language session) '(:perl))))
-	    ;; it is nonconforming to DBGp specs; anyway manage it.
-	      (run-hook-with-args 'geben-dbgp-continuous-command-hook session)
-	    (geben-dbgp-command-step-into session)))))))
+        (if (not geben-pause-at-entry-line)
+            (geben-dbgp-command-run session)
+          (if (and (equal "break" (xml-get-attribute msg 'status))
+                   (not (member (geben-session-language session) '(:perl))))
+              ;; it is nonconforming to DBGp specs; anyway manage it.
+              (run-hook-with-args 'geben-dbgp-continuous-command-hook session)
+            (geben-dbgp-command-step-into session)))))))
 
 ;; features
 
@@ -2966,54 +2966,54 @@ or a symbol of a function. In the latter case the result value
 of the function is passed to feature_set DBGp command."
   :group 'geben
   :type '(repeat (list (radio (const :get)
-			      (const :set))
-		       (radio (const :help-echo ":get" :tag "language_supports_threads (:get)" language_supports_threads)
-			      (const :tag "language_name (:get)" language_name)
-			      (const :tag "encoding (:get)" encoding)
-			      (const :tag "protocol_version (:get)" protocol_version)
-			      (const :tag "supports_async (:get)" supports_async)
-			      (const :tag "data_encoding (:get)" data_encoding)
-			      (const :tag "breakpoint_languages (:get)" breakpoint_languages)
-			      (const :tag "breakpoint_types (:get)" breakpoint_types)
-			      (const :tag "multiple_sessions (:get :set)" multiple_sessions)
-			      (const :tag "encoding (:get :set)" encoding)
-			      (const :tag "max_children (:get :set)" max_children)
-			      (const :tag "max_data (:get :set)" max_data)
-			      (const :tag "max_depth (:get :set)" max_depth)
-			      (const :tag "supports_postmortem (:get)" supports_postmortem)
-			      (const :tag "show_hidden (:get :set)" show_hidden)
-			      (const :tag "notify_ok (:get :set)" notify_ok))
-		       sexp)))
+                              (const :set))
+                       (radio (const :help-echo ":get" :tag "language_supports_threads (:get)" language_supports_threads)
+                              (const :tag "language_name (:get)" language_name)
+                              (const :tag "encoding (:get)" encoding)
+                              (const :tag "protocol_version (:get)" protocol_version)
+                              (const :tag "supports_async (:get)" supports_async)
+                              (const :tag "data_encoding (:get)" data_encoding)
+                              (const :tag "breakpoint_languages (:get)" breakpoint_languages)
+                              (const :tag "breakpoint_types (:get)" breakpoint_types)
+                              (const :tag "multiple_sessions (:get :set)" multiple_sessions)
+                              (const :tag "encoding (:get :set)" encoding)
+                              (const :tag "max_children (:get :set)" max_children)
+                              (const :tag "max_data (:get :set)" max_data)
+                              (const :tag "max_depth (:get :set)" max_depth)
+                              (const :tag "supports_postmortem (:get)" supports_postmortem)
+                              (const :tag "show_hidden (:get :set)" show_hidden)
+                              (const :tag "notify_ok (:get :set)" notify_ok))
+                       sexp)))
 
 (defun geben-dbgp-feature-init (session)
   "Configure debugger engine with value of `geben-dbgp-feature-list'."
   (let ((features (or (geben-session-feature session)
-		      geben-dbgp-feature-list)))
+                      geben-dbgp-feature-list)))
     (dolist (entry features)
       (let ((method (car entry))
-	    (name (symbol-name (nth 1 entry)))
-	    (param (nth 2 entry)))
-	(cl-case method
-	  (:set
-	   (let ((value (cond
-			 ((null param) nil)
-			 ((symbolp param)
-			  (if (fboundp param)
-			      (funcall param)
-			    (if (boundp param)
-				(symbol-value param)
-			      (symbol-name param))))
-			 (t param))))
-	     (geben-dbgp-command-feature-set session name value)))
-	  (:get
-	   (condition-case error-sexp
-	       (if (and (symbolp param)
-			(fboundp param))
-		   (geben-dbgp-sequence
-		    (geben-dbgp-command-feature-get session name)
-		    param))
-	     (error
-	      (warn "`geben-dbgp-feature-alist' has invalid entry: %S" entry)))))))))
+            (name (symbol-name (nth 1 entry)))
+            (param (nth 2 entry)))
+        (cl-case method
+          (:set
+           (let ((value (cond
+                         ((null param) nil)
+                         ((symbolp param)
+                          (if (fboundp param)
+                              (funcall param)
+                            (if (boundp param)
+                                (symbol-value param)
+                              (symbol-name param))))
+                         (t param))))
+             (geben-dbgp-command-feature-set session name value)))
+          (:get
+           (condition-case error-sexp
+               (if (and (symbolp param)
+                        (fboundp param))
+                   (geben-dbgp-sequence
+                       (geben-dbgp-command-feature-get session name)
+                     param))
+             (error
+              (warn "`geben-dbgp-feature-alist' has invalid entry: %S" entry)))))))))
 
 ;; feature
 
@@ -3024,10 +3024,10 @@ of the function is passed to feature_set DBGp command."
 (defun geben-dbgp-command-feature-set (session feature value)
   "Send \`feature_get\' command."
   (geben-dbgp-send-command session "feature_set"
-			   (cons "-n" feature)
-			   (cons "-v" (format "%S" (eval value)))))
+                           (cons "-n" feature)
+                           (cons "-v" (format "%S" (eval value)))))
 
-;(add-hook 'geben-dbgp-init-hook #'geben-dbgp-init-fetch-entry-source t)
+                                        ;(add-hook 'geben-dbgp-init-hook #'geben-dbgp-init-fetch-entry-source t)
 (add-hook 'geben-dbgp-init-hook #'geben-dbgp-feature-init t)
 (add-hook 'geben-dbgp-init-hook #'geben-dbgp-redirect-init t)
 (add-hook 'geben-dbgp-init-hook #'geben-dbgp-command-context-names t)
@@ -3138,7 +3138,7 @@ The geben-mode buffer commands:
   (set (make-local-variable 'command-error-function) #'geben-mode-read-only-handler)
   (let ((win (get-buffer-window (current-buffer))))
     (if win
-	(set-window-buffer win (current-buffer))))
+        (set-window-buffer win (current-buffer))))
   (when geben-scroll-margin
     (setq-local scroll-margin geben-scroll-margin)))
 
@@ -3148,11 +3148,11 @@ The geben-mode buffer commands:
 (defun geben-mode-read-only-handler (data context caller)
   (if (eq 'buffer-read-only (car data))
       (geben-with-current-session session
-	(let ((prompt "The buffer is under debug mode. Want to open the original file? (y/N): "))
-	  (if (memq (read-char prompt) '(?Y ?y))
-	      (geben-session-source-visit-original-file
-	       session
-	       (geben-session-source-fileuri session (buffer-file-name))))))
+        (let ((prompt "The buffer is under debug mode. Want to open the original file? (y/N): "))
+          (if (memq (read-char prompt) '(?Y ?y))
+              (geben-session-source-visit-original-file
+               session
+               (geben-session-source-fileuri session (buffer-file-name))))))
     (message (error-message-string data))
     (beep)))
 
@@ -3162,19 +3162,19 @@ The geben-mode buffer commands:
     (set (make-local-variable 'geben-current-session) session)))
 
 (add-hook 'geben-source-release-hook
-	  (lambda () (geben-mode 0)))
+          (lambda () (geben-mode 0)))
 
 (defun geben-where ()
   "Move to the current breaking point."
   (interactive)
   (geben-with-current-session session
     (if (geben-session-stack session)
-	(let* ((stack (cl-second (car (geben-session-stack session))))
-	       (fileuri (geben-source-fileuri-regularize (cdr (assq 'filename stack))))
-	       (lineno (cdr (assq 'lineno stack))))
-	  (geben-session-cursor-update session fileuri lineno))
+        (let* ((stack (cl-second (car (geben-session-stack session))))
+               (fileuri (geben-source-fileuri-regularize (cdr (assq 'filename stack))))
+               (lineno (cdr (assq 'lineno stack))))
+          (geben-session-cursor-update session fileuri lineno))
       (when (interactive-p)
-	(message "GEBEN is not started.")))))
+        (message "GEBEN is not started.")))))
 
 (defun geben-quit-window ()
   (interactive)
@@ -3240,13 +3240,13 @@ It will break at next breakpoint, or stops at the end of the script."
   (interactive)
   (geben-with-current-session session
     (geben-dbgp-sequence
-	(geben-set-breakpoint-line nil nil nil t)
+        (geben-set-breakpoint-line nil nil nil t)
       (lambda (session cmd msg err)
-	(let ((bid (xml-get-attribute-or-nil msg 'id)))
-	  (geben-dbgp-sequence-bind (bid)
-	    (geben-run)
-	    (lambda (session cmd msg err)
-	      (geben-dbgp-command-breakpoint-remove session bid))))))))
+        (let ((bid (xml-get-attribute-or-nil msg 'id)))
+          (geben-dbgp-sequence-bind (bid)
+            (geben-run)
+            (lambda (session cmd msg err)
+              (geben-dbgp-command-breakpoint-remove session bid))))))))
 
 (defun geben-stop ()
   "End execution of the script immediately."
@@ -3272,48 +3272,48 @@ hit-value interactively.
   (interactive "P")
   (geben-with-current-session session
     (let ((candidates (remove nil
-			      (mapcar
-			       (lambda (x)
-				 (if (member (car x)
-					     (geben-breakpoint-types (geben-session-breakpoint session)))
-				     x))
-			       '((:line . "l)Line")
-				 (:call . "c)Call")
-				 (:return . "r)Return")
-				 (:exception . "e)Exception")
-				 (:conditional . "d)Conditional")
-				 (:watch . "w)Watch"))))))
+                              (mapcar
+                               (lambda (x)
+                                 (if (member (car x)
+                                             (geben-breakpoint-types (geben-session-breakpoint session)))
+                                     x))
+                               '((:line . "l)Line")
+                                 (:call . "c)Call")
+                                 (:return . "r)Return")
+                                 (:exception . "e)Exception")
+                                 (:conditional . "d)Conditional")
+                                 (:watch . "w)Watch"))))))
       (when (null candidates)
-	(error "No breakpoint type is supported by the debugger engine."))
+        (error "No breakpoint type is supported by the debugger engine."))
       (let* ((c (read-char (concat "Breakpoint type: "
-				   (mapconcat
-				    (lambda (x)
-				      (cdr x))
-				    candidates " "))))
-	     (x (cl-find-if (lambda (x)
-			      (eq c (elt (cdr x) 0)))
-			    candidates))
-	     (fn (and x
-		      (intern-soft (concat "geben-set-breakpoint-"
-					   (substring (symbol-name (car x)) 1))))))
-	(unless x
-	  (error "Cancelled"))
-	(if (fboundp fn)
-	    (call-interactively fn)
-	  (error (concat (symbol-name fn) " is not implemented.")))))))
+                                   (mapconcat
+                                    (lambda (x)
+                                      (cdr x))
+                                    candidates " "))))
+             (x (cl-find-if (lambda (x)
+                              (eq c (elt (cdr x) 0)))
+                            candidates))
+             (fn (and x
+                      (intern-soft (concat "geben-set-breakpoint-"
+                                           (substring (symbol-name (car x)) 1))))))
+        (unless x
+          (error "Cancelled"))
+        (if (fboundp fn)
+            (call-interactively fn)
+          (error (concat (symbol-name fn) " is not implemented.")))))))
 
 (defun geben-set-breakpoint-common (session hit-value bp)
   (setq hit-value (if (and (not (null hit-value))
-			   (listp hit-value))
-		      (if (fboundp 'read-number)
-			  (read-number "Number of hit to break: ")
-			(string-to-number
-			 (read-string "Number of hit to break: ")))
-		    hit-value))
+                           (listp hit-value))
+                      (if (fboundp 'read-number)
+                          (read-number "Number of hit to break: ")
+                        (string-to-number
+                         (read-string "Number of hit to break: ")))
+                    hit-value))
   (plist-put bp :hit-value (if (and (numberp hit-value)
-				     (<= 0 hit-value))
-				hit-value
-			      0))
+                                    (<= 0 hit-value))
+                               hit-value
+                             0))
   (geben-dbgp-command-breakpoint-set session bp))
 
 (defun geben-set-breakpoint-line (fileuri lineno &optional hit-value temporary-p)
@@ -3328,21 +3328,21 @@ hit-value interactively."
   (interactive (list nil nil current-prefix-arg nil))
   (geben-with-current-session session
     (let ((local-path (if fileuri
-			  (geben-session-source-local-path session fileuri)
-			(buffer-file-name (current-buffer)))))
+                          (geben-session-source-local-path session fileuri)
+                        (buffer-file-name (current-buffer)))))
       (geben-set-breakpoint-common session hit-value
-				   (geben-bp-make
-				    session :line
-				    :fileuri (or fileuri
-						 (geben-session-source-fileuri session local-path)
-						 (geben-session-source-fileuri session (file-truename local-path))
-						 (geben-source-fileuri session local-path))
-				    :lineno (if (numberp lineno)
-						lineno
-					      (geben-what-line))
-				    :local-path local-path
-				    :overlay t
-				    :run-once temporary-p)))))
+                                   (geben-bp-make
+                                    session :line
+                                    :fileuri (or fileuri
+                                                 (geben-session-source-fileuri session local-path)
+                                                 (geben-session-source-fileuri session (file-truename local-path))
+                                                 (geben-source-fileuri session local-path))
+                                    :lineno (if (numberp lineno)
+                                                lineno
+                                              (geben-what-line))
+                                    :local-path local-path
+                                    :overlay t
+                                    :run-once temporary-p)))))
 
 (defvar geben-set-breakpoint-call-history nil)
 (defvar geben-set-breakpoint-fileuri-history nil)
@@ -3365,22 +3365,22 @@ hit-value interactively."
   (geben-with-current-session session
     (when (interactive-p)
       (setq name (read-string "Name: " ""
-			      'geben-set-breakpoint-call-history))
+                              'geben-set-breakpoint-call-history))
       (setq fileuri
-	    (unless (member (geben-session-language session) '(:php :ruby))
-	      ;; at this present some debugger engines' implementations is buggy:
-	      ;; some requires fileuri and some don't accept it.
-	      (let ((local-path (file-truename (buffer-file-name (current-buffer)))))
-		(read-string "fileuri: "
-			     (or (geben-session-source-fileuri session local-path)
-				 (geben-source-fileuri session local-path))
-			     'geben-set-breakpoint-fileuri-history))))
+            (unless (member (geben-session-language session) '(:php :ruby))
+              ;; at this present some debugger engines' implementations is buggy:
+              ;; some requires fileuri and some don't accept it.
+              (let ((local-path (file-truename (buffer-file-name (current-buffer)))))
+                (read-string "fileuri: "
+                             (or (geben-session-source-fileuri session local-path)
+                                 (geben-source-fileuri session local-path))
+                             'geben-set-breakpoint-fileuri-history))))
       (setq hit-value current-prefix-arg))
     (when (string< "" name)
       (geben-set-breakpoint-common session hit-value
-				   (geben-bp-make session :call
-						  :function name
-						  :fileuri fileuri)))))
+                                   (geben-bp-make session :call
+                                                  :function name
+                                                  :fileuri fileuri)))))
 
 (defun geben-set-breakpoint-return (name &optional fileuri hit-value)
   "Set a breakpoint to break after returned from a function/method named NAME.
@@ -3398,22 +3398,22 @@ hit-value interactively."
   (geben-with-current-session session
     (when (interactive-p)
       (setq name (read-string "Name: " ""
-			      'geben-set-breakpoint-call-history))
+                              'geben-set-breakpoint-call-history))
       (setq fileuri
-	    (unless (member (geben-session-language session) '(:php :ruby))
-	      ;; at this present some debugger engines' implementations are buggy:
-	      ;; some requires fileuri and some don't accept it.
-	      (let ((local-path (file-truename (buffer-file-name (current-buffer)))))
-		(read-string "fileuri: "
-			     (or (geben-session-source-fileuri session local-path)
-				 (geben-source-fileuri session local-path))
-			     'geben-set-breakpoint-fileuri-history))))
+            (unless (member (geben-session-language session) '(:php :ruby))
+              ;; at this present some debugger engines' implementations are buggy:
+              ;; some requires fileuri and some don't accept it.
+              (let ((local-path (file-truename (buffer-file-name (current-buffer)))))
+                (read-string "fileuri: "
+                             (or (geben-session-source-fileuri session local-path)
+                                 (geben-source-fileuri session local-path))
+                             'geben-set-breakpoint-fileuri-history))))
       (setq hit-value current-prefix-arg))
     (when (string< "" name)
       (geben-set-breakpoint-common session hit-value
-				   (geben-bp-make session :return
-						  :function name
-						  :fileuri fileuri)))))
+                                   (geben-bp-make session :return
+                                                  :function name
+                                                  :fileuri fileuri)))))
 
 (defun geben-set-breakpoint-exception (name &optional hit-value)
   "Set a breakpoint to break at when an exception named NAME is occurred.
@@ -3425,14 +3425,14 @@ With just a prefix arg \(\\[universal-argument] \\[geben-set-breakpoint-exceptio
 this command will also ask a
 hit-value interactively."
   (interactive (list
-		(read-string "Exception type: "
-			     "Exception"
-			     'geben-set-breakpoint-exception-history)
-		current-prefix-arg))
+                (read-string "Exception type: "
+                             "Exception"
+                             'geben-set-breakpoint-exception-history)
+                current-prefix-arg))
   (geben-with-current-session session
     (geben-set-breakpoint-common session hit-value
-				 (geben-bp-make session :exception
-						:exception name))))
+                                 (geben-bp-make session :exception
+                                                :exception name))))
 
 (defun geben-set-breakpoint-conditional (expr fileuri &optional lineno hit-value)
   "Set a breakpoint to break at when the expression EXPR is true in the file FILEURI.
@@ -3447,22 +3447,22 @@ hit-value interactively."
   (geben-with-current-session session
     (when (interactive-p)
       (setq expr (read-string "Expression: " ""
-			      'geben-set-breakpoint-condition-history))
+                              'geben-set-breakpoint-condition-history))
       (setq fileuri
-	    (let ((local-path (file-truename (buffer-file-name (current-buffer)))))
-	      (or (geben-session-source-fileuri session local-path)
-		  (geben-source-fileuri session local-path))))
+            (let ((local-path (file-truename (buffer-file-name (current-buffer)))))
+              (or (geben-session-source-fileuri session local-path)
+                  (geben-source-fileuri session local-path))))
       (setq lineno (read-string "Line number to evaluate (blank means entire file): "
-				(number-to-string (geben-what-line))))
+                                (number-to-string (geben-what-line))))
       (setq hit-value current-prefix-arg))
 
     (geben-set-breakpoint-common session hit-value
-				 (geben-bp-make session :conditional
-						:expression expr
-						:fileuri fileuri
-						:lineno (and (stringp lineno)
-							     (string-match "^[0-9]+$" lineno)
-							     (string-to-number lineno))))))
+                                 (geben-bp-make session :conditional
+                                                :expression expr
+                                                :fileuri fileuri
+                                                :lineno (and (stringp lineno)
+                                                             (string-match "^[0-9]+$" lineno)
+                                                             (string-to-number lineno))))))
 
 (defun geben-set-breakpoint-watch (expr &optional hit-value)
   "Set a breakpoint to break on write of the variable or address.
@@ -3477,19 +3477,19 @@ hit-value interactively."
   (geben-with-current-session session
     (when (interactive-p)
       (setq expr (read-string "Expression: " ""
-			      'geben-set-breakpoint-condition-history))
+                              'geben-set-breakpoint-condition-history))
       (setq hit-value current-prefix-arg))
     (geben-set-breakpoint-common session hit-value
-				 (geben-bp-make session :watch
-						:expression expr))))
+                                 (geben-bp-make session :watch
+                                                :expression expr))))
 
 (defun geben-unset-breakpoint-line ()
   "Clear a breakpoint set at the current line."
   (interactive)
   (geben-with-current-session session
     (mapc (lambda (bp)
-	    (geben-dbgp-command-breakpoint-remove session (plist-get bp :id)))
-	  (geben-breakpoint-find-at-pos session (current-buffer) (point)))))
+            (geben-dbgp-command-breakpoint-remove session (plist-get bp :id)))
+          (geben-breakpoint-find-at-pos session (current-buffer) (point)))))
 
 (defun geben-clear-breakpoints ()
   "Clear all breakpoints.
@@ -3498,8 +3498,8 @@ removing all breakpoints."
   (interactive)
   (geben-with-current-session session
     (when (or (not geben-query-on-clear-breakpoints)
-	      (let ((prompt "Clear all breakpoints? (y/N): "))
-		(memq (read-char prompt) '(?Y ?y))))
+              (let ((prompt "Clear all breakpoints? (y/N): "))
+                (memq (read-char prompt) '(?Y ?y))))
       (geben-breakpoint-clear session)
       (geben-clear-predefined-breakpoints))))
 
@@ -3573,7 +3573,7 @@ breakpoint and the value speficies the line number."
   (let ((expr (current-word)))
     (when expr
       (geben-with-current-session session
-	(geben-dbgp-command-eval session expr)))))
+        (geben-dbgp-command-eval session expr)))))
 
 (defun geben-open-file (fileuri)
   "Open a debugger server side file specified by FILEURI.
@@ -3594,7 +3594,7 @@ Key mapping and other information is described its help page."
   "Toggle `geben-pause-at-entry-line'."
   (interactive)
   (setq geben-pause-at-entry-line
-	(not geben-pause-at-entry-line))
+        (not geben-pause-at-entry-line))
   (if (interactive-p)
       (message (format "`geben-pause-at-entry-line' is %s" geben-pause-at-entry-line))))
 
@@ -3605,49 +3605,49 @@ You can select redirection target from \`stdout', \`stderr' and both of them.
 Prefixed with \\[universal-argument], you can also select redirection mode
 from \`redirect', \`intercept' and \`disabled'."
   (interactive (list (cl-case (read-char "Redirect: o)STDOUT e)STRERR b)Both")
-		       (?o :stdout)
-		       (?e :stderr)
-		       (?b :both))
-		     current-prefix-arg))
+                       (?o :stdout)
+                       (?e :stderr)
+                       (?b :both))
+                     current-prefix-arg))
   (unless target
     (error "Cancelled"))
   (let ((mode (if arg
-		  (cl-case (read-char "Mode: r)Redirect i)Intercept d)Disable")
-		    (?r :redirect)
-		    (?i :intercept)
-		    (?d :disable))
-		:redirect)))
+                  (cl-case (read-char "Mode: r)Redirect i)Intercept d)Disable")
+                    (?r :redirect)
+                    (?i :intercept)
+                    (?d :disable))
+                :redirect)))
     (unless mode
       (error "Cancelled"))
     (geben-with-current-session session
       (when (memq target '(:stdout :both))
-	(geben-dbgp-command-stdout session mode))
+        (geben-dbgp-command-stdout session mode))
       (when (memq target '(:stderr :both))
-	(geben-dbgp-command-stderr session mode)))))
+        (geben-dbgp-command-stderr session mode)))))
 
 (defun geben-display-context (&optional depth)
   (interactive (list (cond
-		      ((null current-prefix-arg) 0)
-		      ((numberp current-prefix-arg)
-		       current-prefix-arg)
-		      ((listp current-prefix-arg)
-		       (if (fboundp 'read-number)
-			   (read-number "Depth: " 0)
-			 (string-to-number (read-string "Depth: " "0"))))
-		      (t nil))))
+                      ((null current-prefix-arg) 0)
+                      ((numberp current-prefix-arg)
+                       current-prefix-arg)
+                      ((listp current-prefix-arg)
+                       (if (fboundp 'read-number)
+                           (read-number "Depth: " 0)
+                         (string-to-number (read-string "Depth: " "0"))))
+                      (t nil))))
   (geben-with-current-session session
     (geben-context-list-display session (or depth 0))))
 
 (defun geben-find-file ()
   (interactive)
-    (geben-with-current-session session
-      (let ((file-path (geben-session-source-read-file-name
-			session
-			(file-name-directory (geben-source-fileuri session
-								   (buffer-file-name)))
-			t)))
-	(when file-path
-	  (geben-open-file (geben-source-fileuri session file-path))))))
+  (geben-with-current-session session
+    (let ((file-path (geben-session-source-read-file-name
+                      session
+                      (file-name-directory (geben-source-fileuri session
+                                                                 (buffer-file-name)))
+                      t)))
+      (when file-path
+        (geben-open-file (geben-source-fileuri session file-path))))))
 
 
 (defcustom geben-dbgp-default-port 9000
@@ -3724,61 +3724,61 @@ described its help page."
   "Stop the DBGp listener on PORT."
   (interactive
    (let ((ports (remq nil
-		      (mapcar (lambda (listener)
-				(and (not (dbgp-proxy-p listener))
-				     (number-to-string (cl-second (process-contact listener)))))
-			      dbgp-listeners))))
+                      (mapcar (lambda (listener)
+                                (and (not (dbgp-proxy-p listener))
+                                     (number-to-string (cl-second (process-contact listener)))))
+                              dbgp-listeners))))
      (list
       (if (= 1 (length ports))
-	  (string-to-number (car ports))
-	;; ask user for the target idekey.
-	(let ((num (completing-read "Listener port to kill: " ports nil t)))
-	  (if (string< "" num)
-	      (read num)
-	    (signal 'quit nil)))))))
+          (string-to-number (car ports))
+        ;; ask user for the target idekey.
+        (let ((num (completing-read "Listener port to kill: " ports nil t)))
+          (if (string< "" num)
+              (read num)
+            (signal 'quit nil)))))))
   (let ((listener (dbgp-listener-find port)))
     (dbgp-listener-kill port)
     (and (interactive-p)
-	 (message (if listener
-		      "The DBGp listener for port %d is terminated."
-		    "DBGp listener for port %d does not exist.")
-		  port))
+         (message (if listener
+                      "The DBGp listener for port %d is terminated."
+                    "DBGp listener for port %d does not exist.")
+                  port))
     (and listener t)))
 
 (defun geben-proxy (ip-or-addr port idekey ;;multi-session-p
-			       &optional session-port)
+                               &optional session-port)
   "Start a new DBGp proxy listener.
 The DBGp proxy should be found at IP-OR-ADDR / PORT.
 This create a new DBGp listener and register it to the proxy
 associating with the IDEKEY."
   (interactive (list
-		(let ((default (or (car dbgp-proxy-address-history)
-				   (nth 0 geben-dbgp-default-proxy)
-				   (nth 0 (default-value 'geben-dbgp-default-proxy)))))
-		  (dbgp-read-string (format "Proxy address (default %s): " default)
-				    nil 'dbgp-proxy-address-history default))
-		(let ((default (or (car dbgp-proxy-port-history)
-				   (nth 1 geben-dbgp-default-proxy)
-				   (nth 1 (default-value 'geben-dbgp-default-proxy)))))
-		  (dbgp-read-integer (format "Proxy port (default %d): " default)
-				     default 'dbgp-proxy-port-history))
-		(let ((default (or (car dbgp-proxy-idekey-history)
-				   (nth 2 geben-dbgp-default-proxy)
-				   (nth 2 (default-value 'geben-dbgp-default-proxy)))))
-		  (dbgp-read-string "IDE key: " nil 'dbgp-proxy-idekey-history))
-		;;(not (memq (read-char "Multi session(Y/n): ") '(?N ?n)))
-		(let ((default (or (car dbgp-proxy-session-port-history)
-				   (nth 4 geben-dbgp-default-proxy)
-				   (nth 4 (default-value 'geben-dbgp-default-proxy)))))
-		  (unless (numberp default)
-		    (setq default 0))
-		  (dbgp-read-integer (format "Port for debug session (%s): "
-					     (if (< 0 default)
-						 (format "default %d, 0 to use any free port" default)
-					       (format "leave empty to use any free port")))
-				     default 'dbgp-proxy-session-port-history))))
+                (let ((default (or (car dbgp-proxy-address-history)
+                                   (nth 0 geben-dbgp-default-proxy)
+                                   (nth 0 (default-value 'geben-dbgp-default-proxy)))))
+                  (dbgp-read-string (format "Proxy address (default %s): " default)
+                                    nil 'dbgp-proxy-address-history default))
+                (let ((default (or (car dbgp-proxy-port-history)
+                                   (nth 1 geben-dbgp-default-proxy)
+                                   (nth 1 (default-value 'geben-dbgp-default-proxy)))))
+                  (dbgp-read-integer (format "Proxy port (default %d): " default)
+                                     default 'dbgp-proxy-port-history))
+                (let ((default (or (car dbgp-proxy-idekey-history)
+                                   (nth 2 geben-dbgp-default-proxy)
+                                   (nth 2 (default-value 'geben-dbgp-default-proxy)))))
+                  (dbgp-read-string "IDE key: " nil 'dbgp-proxy-idekey-history))
+                ;;(not (memq (read-char "Multi session(Y/n): ") '(?N ?n)))
+                (let ((default (or (car dbgp-proxy-session-port-history)
+                                   (nth 4 geben-dbgp-default-proxy)
+                                   (nth 4 (default-value 'geben-dbgp-default-proxy)))))
+                  (unless (numberp default)
+                    (setq default 0))
+                  (dbgp-read-integer (format "Port for debug session (%s): "
+                                             (if (< 0 default)
+                                                 (format "default %d, 0 to use any free port" default)
+                                               (format "leave empty to use any free port")))
+                                     default 'dbgp-proxy-session-port-history))))
   (geben-dbgp-start-proxy ip-or-addr port idekey ;;multi-session-p
-			  session-port))
+                          session-port))
 
 (defalias 'geben-proxy-end #'dbgp-proxy-unregister)
 
