@@ -2861,15 +2861,42 @@ The buffer commands are:
   :group 'geben
   :type '(repeat string))
 
+(defcustom geben-dbgp-session-user-filter-uri-regexp-hitcounts '()
+  "Plist of matched uris and the required amount of hits to trigger."
+  :type '(plist :value-type integer :key-type string)
+  :group 'geben)
+
+(defvar geben-dbgp-session-user-filter-uri-regexp-hitcounts-hit '())
+
+(defcustom geben-dbgp-session-user-filter-uri-regexp nil
+  "Ignore all debug requests with matched uris"
+  :group 'geben
+  :type '(repeat string))
+
 (defun geben-dbgp-session-user-filter (proc string)
   "Do not accept a session if its fileuri can be matched against "
   (let* ((xml (car (with-temp-buffer
                      (insert string)
                      (xml-parse-region (point-min) (point-max)))))
          (fileuri (xml-get-attribute-or-nil xml 'fileuri)))
-    (when (cl-some (lambda (reg)
-                     (string-match reg fileuri)) geben-dbgp-session-user-filter-uri-regexp)
+    (when (or
+           ;; could probably be done in a nicer way
+           (cl-some 'identity
+                    (cl-loop for (reg value) on geben-dbgp-session-user-filter-uri-regexp-hitcounts by 'cddr
+                             if (string-match reg fileuri)
+                             collect (let ((hitcount (1+ (or (lax-plist-get geben-dbgp-session-user-filter-uri-regexp-hitcounts-hit reg) 0))))
+                                       (setq geben-dbgp-session-user-filter-uri-regexp-hitcounts-hit
+                                             (lax-plist-put geben-dbgp-session-user-filter-uri-regexp-hitcounts-hit reg hitcount))
+                                       ;; reject if less hits
+                                       (< hitcount value))))
+           (cl-some (lambda (reg)
+                      (string-match reg fileuri)) geben-dbgp-session-user-filter-uri-regexp))
       fileuri)))
+
+;; cleanup hits after session
+(defun geben-dbgp-session-user-filter-cleanup ()
+  (setq geben-dbgp-session-user-filter-uri-regexp-hitcounts-hit '()))
+(add-hook 'geben-session-exit-hook 'geben-dbgp-session-user-filter-cleanup)
 
 (defun geben-dbgp-session-init (proc)
   "Initialize SESSION environment."
