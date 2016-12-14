@@ -3561,11 +3561,22 @@ breakpoint and the value speficies the line number."
                                       :overlay t
                                       :run-once nil))))))
 
+
+(defcustom geben-path-mappings '()
+  "Path mappings for setting breakpoints in VMs/containers/other spaceships."
+  :group 'geben
+  :type '(repeat (list string string)))
+
 ;;;###autoload
 (defun geben-add-current-line-to-predefined-breakpoints ()
   "Add the current line to the predefined breakpoints."
   (interactive)
-  (let ((path (buffer-file-name))
+  (let ((path
+         (cl-loop
+          for pair in geben-path-mappings
+          with res = (buffer-file-name)
+          do (setq res (replace-regexp-in-string (car pair) (cadr pair) res))
+          finally return res))
         (line (line-number-at-pos)))
     (add-to-list 'geben-predefined-breakpoints `(,path . ,line))
     (message "%s line %s %s" path line "added to predefined breakpoints")))
