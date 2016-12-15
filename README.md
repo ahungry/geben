@@ -1,4 +1,4 @@
-# Geben-1.1.0
+# Geben
 Geben is a software package that interfaces Emacs to DBGp protocol
 with which you can debug running scripts interactively. At this point,
 the DBGp protocol is supported in several scripting languages with
@@ -13,11 +13,11 @@ help of custom extensions.
   * [Install](#installation)
 - [Usage](#usage)
   * [Debugging](#debugging)
-    - [Command Line](#command line)
+    - [Command Line](#command-line)
     - [Web](#web)
-  * [Advanced](#more advanced usage)
+  * [Advanced](#more-advanced-usage)
 - [About](#about)
-  * [Known Issues](#known issues)
+  * [Known Issues](#known-issues)
   * [Support](#support)
   * [License](#license)
 
