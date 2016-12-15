@@ -7,6 +7,21 @@ help of custom extensions.
  * PHP with Xdebug 2.0.*
  * Perl, Python, Ruby and Tcl with Komodo Debugger Extensions
 
+## TOC
+- [Setup](#setup)
+  * [Requirements](#requirements)
+  * [Install](#installation)
+- [Usage](#usage)
+  * [Debugging](#debugging)
+    - [Command Line](#commandline)
+    - [Web](#web)
+  * [Advanced](#moreadvancedusage)
+- [About](#about)
+  * [Known Issues](#knownissues)
+  * [Support](#support)
+  * [License](#license)
+
+## Features
 Currently Geben implements the following features.
 
  * continuation commands: run/stop/step-in/step-over/step-out
@@ -16,8 +31,8 @@ Currently Geben implements the following features.
  * backtrace listing
  * variable inspection
 
-
-# Requirements
+# Setup
+## Requirements
 [server side]
  - DBGp protocol enabled script engine, like:
    - PHP with Xdebug
@@ -27,8 +42,7 @@ Currently Geben implements the following features.
 [client side]
  - Emacs 24 or later
 
-
-# Installation
+## Installation
 [server side]
 
 - To debug PHP scripts, you'll need to install PHP, Xdebug and
@@ -46,10 +60,11 @@ Currently Geben implements the following features.
 
 - M-x package-install geben [![MELPA](https://melpa.org/packages/geben-badge.svg)](https://melpa.org/#/geben)
 
-# Debugging
+# Usage
+## Debugging
 For both modes, ensure you have enabled the xdebug extension.
 
-## Command Line
+### Command Line
 To begin testing this out, create a simple PHP file
 (/tmp/gebenTest.php) as such:
 
@@ -87,7 +102,7 @@ session.  Press `SPC` to step forward a line at a time.
 Congratulations!  You've successfully done your first interactive
 debugging session in geben.
 
-## Web Based
+### Web
 Here is an illustration on PHP debugging.
 
 1. Run Emacs.
@@ -136,7 +151,8 @@ Here is an illustration on PHP debugging.
 
    To quit Geben, type: `M-x geben-end`
 
-# Known Issues
+# About
+## Known Issues
 * This version is not tested with Xdebug 2.1.* yet.
 
 * There are some issues related Xdebug, version of at least 2.0.3.
@@ -159,10 +175,12 @@ Here is an illustration on PHP debugging.
   - If Xdebug is not loaded not as `zend_extension', some feature do
     not work as expectedly (e.g. step_into).
 
-
-# Support
+## Support
 We always need your support - bug reports, feature requests,
 and code/documents/design contributions.
 
 To submit one or more of them, please file an issue here or email
 Matthew Carter <m@ahungry.com>.
+
+## License
+GPLv3
