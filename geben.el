@@ -1072,7 +1072,8 @@ Or return specific TRAMP spec. (e.g. \"/user@example.com:\""
   :type 'function)
 
 (defun geben-session-source-visit-original-file (session fileuri &optional disable-completion)
-  (let ((target-path (geben-session-source-read-file-name session fileuri disable-completion)))
+  (let ((target-path
+         (geben-path-mappings-from-debug (geben-session-source-read-file-name session fileuri disable-completion))))
     (and target-path
          (prog1
              (find-file target-path)
@@ -3567,16 +3568,27 @@ breakpoint and the value speficies the line number."
   :group 'geben
   :type '(repeat (list string string)))
 
+(defun geben-path-mappings-to-debug (name)
+  "Map local developer path to debug path by using replacements from
+`geben-path-mappings', replace in order first/car substring by second/cadr ."
+  (cl-reduce (lambda (result mapping)
+               (replace-regexp-in-string (car mapping) (cadr mapping) result))
+             geben-path-mappings
+             :initial-value name))
+
+(defun geben-path-mappings-from-debug (name)
+  "Map debug path to local developer path by using replacements from
+`geben-path-mappings', replace in order second/cadr substring by first/car."
+  (cl-reduce (lambda (result mapping)
+               (replace-regexp-in-string (cadr mapping) (car mapping) result))
+             geben-path-mappings
+             :initial-value name))
+
 ;;;###autoload
 (defun geben-add-current-line-to-predefined-breakpoints ()
   "Add the current line to the predefined breakpoints."
   (interactive)
-  (let ((path
-         (cl-loop
-          for pair in geben-path-mappings
-          with res = (buffer-file-name)
-          do (setq res (replace-regexp-in-string (car pair) (cadr pair) res))
-          finally return res))
+  (let ((path (geben-path-mappings-to-debug (buffer-file-name)))
         (line (line-number-at-pos)))
     (add-to-list 'geben-predefined-breakpoints `(,path . ,line))
     (message "%s line %s %s" path line "added to predefined breakpoints")))
