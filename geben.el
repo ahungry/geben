@@ -2490,12 +2490,29 @@ The buffer commands are:
 
 (defun geben-dbgp-command-property-get (session &rest args)
   (apply 'geben-dbgp-send-command session "property_get"
-         (mapcar (lambda (key)
-                   (let ((arg (plist-get (car args) key)))
-                     (when arg
-                       (cons (geben-cmd-param-for key) arg))))
-                 '(:depth :context-id :name :max-data-size :type :page :key :address))))
+         (let* ((initmsg (geben-session-initmsg session))
+                (lang (xml-get-attribute-or-nil initmsg 'language)))
+           (mapcar (lambda (key)
+                     (let ((arg (plist-get (car args) key)))
+                       (when arg
+                         (cons (geben-cmd-param-for key)
+                               (if (and (eq key :name)
+                                        (not (string= lang "PHP")))
+                                   (geben-dbgp-escape-param-arg arg)
+                                 arg)))))
+                   '(:depth :context-id :name :max-data-size :type :page :key :address)))))
 
+(defun geben-dbgp-escape-param-arg (param)
+  (if (stringp param)
+      (concat
+       "\""
+       (replace-regexp-in-string
+        "*" "\\\\*"
+        (replace-regexp-in-string
+         "\"" "\\\\\""
+         param))
+       "\"")
+    param))
 
 ;;==============================================================
 ;; stack
