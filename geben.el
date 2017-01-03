@@ -1997,7 +1997,7 @@ the file."
 (defvar geben-context-loading nil)
 (defvar geben-context-property-tree-fill-children-hook 'geben-context-tree-children-fill)
 
-(defvar geben-expanded-context-variables '())
+(defvar geben-expanded-context-variables '("Locals"))
 (add-hook 'tree-widget-after-toggle-functions 'geben-tree-widget-notify)
 
 (add-hook 'geben-after-eval-expression 'geben-context-mode-refresh)
@@ -2224,8 +2224,7 @@ Child nodes can be short for :property property of TREE."
     (if (geben-context-property-has-children property)
         (list 'tree-widget
               :tag tag
-              :open (member (geben-context-property-attribute property 'address)
-                            geben-expanded-context-variables)
+              :open (member (or (geben-tree-var-identifier property) tag) geben-expanded-context-variables)
               :property property
               :expander 'geben-context-property-tree-expand
               :expander-p 'geben-context-property-tree-expand-p)
@@ -2304,7 +2303,7 @@ Example: Locals, Superglobals"
                      'tree-widget
                      :tag (car context-name)
                      :context-id (cdr context-name)
-                     :open t
+                     :open (member (car context-name) geben-expanded-context-variables)
                      (mapcar #'geben-context-property-tree-create-node new))))
           (widget-setup))
         (goto-char (point-min))))))
@@ -2352,11 +2351,16 @@ Example: Locals, Superglobals"
               (geben-context-tree-children-fill tree
                                                 tid-save))))))))
 
+(defun geben-tree-var-identifier (property)
+  (geben-context-property-attribute property 'fullname))
+
 (defun geben-tree-widget-notify (widget-tree)
   "Takes WIDGET-TREE and gathers the address of the variable just expanded/collapsed,
  if it was expanded it gets added to `geben-expanded-context-variables' and if it was collapsed
  it gets removed."
-  (let ((var-address (geben-context-property-attribute (widget-get widget-tree :property) 'address)))
+  (let ((var-address (if-let ((property (widget-get widget-tree :property)))
+                         (geben-tree-var-identifier property)
+                       (widget-get widget-tree :tag))))
     (if (widget-get widget-tree :open)
         (add-to-list 'geben-expanded-context-variables var-address)
       (setq geben-expanded-context-variables (cl-remove var-address geben-expanded-context-variables :test 'string-equal)))))
