@@ -90,6 +90,16 @@ You will notice the script does not complete, it pauses in your emacs session.  
    connection. Then Emacs loads the script source code of the entry
    page in a buffer.
 
+### Debugging with VM/docker/...
+Add a mapping from files on the host to files on the vm/docker image with M-x customize-variable geben-path-mappings or set in emacs config with (setq geben-path-mappings '(("<project base on host>" "<project base on vm>")))
+1.5. Check those mappings with C-h v geben-path-mappings. The mappings may not (?) show up until a geben process is running.
+Open a file you are interested in setting breakpoints on the host machine. Find the breakpoint and issue M-x geben-add-current-line-to-predefined-breakpoints.
+2.5 Check that a breakpoint has been set with C-h v geben-predefined-breakpoints
+Run the geben process: M-x geben.
+Initiate the xdebug server.
+Use r or C-c C-c until you reach your breakpoint.
+To set new breakpoints in an active geben buffer, you can use b or M-x geben-set-breakpoint-line. To set a new breakpoint outside an active geben buffer, open the file on the host system and use M-x geben-add-current-line-to-predefined-breakpoints again.
+
 ## Perl
 Add Documentation: https://github.com/ahungry/geben/issues/28
 
