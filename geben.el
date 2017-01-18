@@ -2536,7 +2536,7 @@ The buffer commands are:
   "Face for displaying line numbers in backtrace buffer."
   :group 'geben-highlighting-faces)
 
-(defcustom geben-backtrace-mode-hook nil
+(defcustom geben-backtrace-mode-hook '(hl-line-mode)
   "*Hook running at when GEBEN's backtrace buffer is initialized."
   :group 'geben
   :type 'hook)
