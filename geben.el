@@ -858,14 +858,8 @@ A source object forms a property list with three properties
   (let ((buf (find-buffer-visiting (or (plist-get source :local-path) ""))))
     (when buf
       (with-current-buffer buf
-        (when (and (boundp 'geben-mode)
-                   (symbol-value 'geben-mode))
+        (when (bound-and-true-p geben-mode)
           (run-hooks 'geben-source-release-hook))
-        ;;	  Not implemented yet
-        ;; 	  (and (buffer-modified-p buf)
-        ;; 	       (switch-to-buffer buf)
-        ;; 	       (yes-or-no-p "Buffer is modified. Save it?")
-        ;; 	       (geben-write-file-contents this buf))
         (when geben-close-mirror-file-after-finish
           (set-buffer-modified-p nil)
           (kill-buffer buf))))))
@@ -2916,7 +2910,7 @@ The buffer commands are:
       fileuri)))
 
 ;; cleanup hits after session
-(defun geben-dbgp-session-user-filter-cleanup ()
+(defun geben-dbgp-session-user-filter-cleanup (session)
   (setq geben-dbgp-session-user-filter-uri-regexp-hitcounts-hit '()))
 (add-hook 'geben-session-exit-hook 'geben-dbgp-session-user-filter-cleanup)
 
