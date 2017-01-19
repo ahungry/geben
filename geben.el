@@ -5,13 +5,14 @@
 
 ;; Filename: geben.el
 ;; Author: Matthew Carter <m@ahungry.com>
+;; Author: Johannes Goslar <jogo@kronberger-spiele.de>
 ;; Code derived from Original Author: reedom <fujinaka.tohru@gmail.com>
 ;; Maintainer: Matthew Carter <m@ahungry.com>
 ;; URL: https://github.com/ahungry/geben
-;; Version: 1.0.2
-;; Keywords: DBGp, debugger, PHP, Xdebug, Perl, Python, Ruby, Tcl, Komodo
+;; Version: 1.0.3
+;; Keywords: c, comm, tools
 ;; Compatibility: Emacs 24+
-;; Package-Requires: ((emacs "24") (cl-lib "0.5"))
+;; Package-Requires: ((emacs "24.3") (cl-lib "0.5"))
 
 ;; This file is not part of GNU Emacs
 
