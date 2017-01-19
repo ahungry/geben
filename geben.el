@@ -2352,9 +2352,10 @@ Example: Locals, Superglobals"
   "Takes WIDGET-TREE and gathers the address of the variable just expanded/collapsed,
  if it was expanded it gets added to `geben-expanded-context-variables' and if it was collapsed
  it gets removed."
-  (let ((var-address (if-let ((property (widget-get widget-tree :property)))
-                         (geben-tree-var-identifier property)
-                       (widget-get widget-tree :tag))))
+  (let* ((property (widget-get widget-tree :property))
+         (var-address (if property
+                          (geben-tree-var-identifier property)
+                        (widget-get widget-tree :tag))))
     (if (widget-get widget-tree :open)
         (add-to-list 'geben-expanded-context-variables var-address)
       (setq geben-expanded-context-variables (cl-remove var-address geben-expanded-context-variables :test 'string-equal)))))
