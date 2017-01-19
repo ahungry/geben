@@ -18,6 +18,7 @@ help of custom extensions.
     - [PHP](#php)
         - [Command Line](#command-line)
         - [Web](#web)
+        - [VMs](#vms)
     - [Perl](#perl)
     - [Python](#python)
     - [Ruby](#ruby)
@@ -90,27 +91,31 @@ You will notice the script does not complete, it pauses in your emacs session.  
    connection. Then Emacs loads the script source code of the entry
    page in a buffer.
 
-### Debugging with VM/docker/...
-Add a mapping from files on the host to files on the vm/docker image with M-x customize-variable geben-path-mappings or set in emacs config with (setq geben-path-mappings '(("<project base on host>" "<project base on vm>")))
-1.5. Check those mappings with C-h v geben-path-mappings. The mappings may not (?) show up until a geben process is running.
-Open a file you are interested in setting breakpoints on the host machine. Find the breakpoint and issue M-x geben-add-current-line-to-predefined-breakpoints.
-2.5 Check that a breakpoint has been set with C-h v geben-predefined-breakpoints
-Run the geben process: M-x geben.
-Initiate the xdebug server.
-Use r or C-c C-c until you reach your breakpoint.
-To set new breakpoints in an active geben buffer, you can use b or M-x geben-set-breakpoint-line. To set a new breakpoint outside an active geben buffer, open the file on the host system and use M-x geben-add-current-line-to-predefined-breakpoints again.
+### VMs
+1. Add a mapping from files on the host to files on the vm/docker image with `M-x customize-variable geben-path-mappings`
+or set in emacs config with `(setq geben-path-mappings '(("<project base on host>" "<project base on vm>"))`
+
+2. Check those mappings with `C-h v geben-path-mappings`. Beware that the mappings only show up after geben was required.
+
+3. Open a file you are interested in setting breakpoints on the host machine. Find the line and issue `M-x geben-add-current-line-to-predefined-breakpoints`.
+
+4. Check that a breakpoint has been set with `C-h v geben-predefined-breakpoints`
+
+5. Follow process in [web](#web)
+
+6. To set new breakpoints in an active geben buffer, you can use `b` or `M-x geben-set-breakpoint-line`. To set a new breakpoint outside an active geben buffer, open the file on the host system and use `M-x geben-add-current-line-to-predefined-breakpoints` again.
 
 ## Perl
-Add Documentation: https://github.com/ahungry/geben/issues/28
+[Documentation missing](https://github.com/ahungry/geben/issues/28)
 
 ## Python
-Add Documentation: https://github.com/ahungry/geben/issues/28
+[Documentation missing](https://github.com/ahungry/geben/issues/28)
 
 ## Ruby
-Add Documentation: https://github.com/ahungry/geben/issues/28
+[Documentation missing](https://github.com/ahungry/geben/issues/28)
 
 ## Tcl
-Add Documentation: https://github.com/ahungry/geben/issues/28
+[Documentation missing](https://github.com/ahungry/geben/issues/28)
 
 ## Node.js
 Even though Node.js ha(s|d) some dbgp protocol support via the [komodo-debug](https://www.npmjs.com/package/komodo-debug) that extension seems to be unmainted and succeded by the newer debug implementations from 7.x forward and geben is not supporting it.
@@ -132,13 +137,13 @@ You can control the debugger with several keys.
      - B       set a breakpoint interactively
      - u       unset a breakpoint at a line
      - U       clear all breakpoints
-     - \C-c b  display breakpoint list
+     - C-c b  display breakpoint list
      - >       set redirection mode
-     - \C-u t  change redirection mode
+     - C-u t  change redirection mode
      - d       display backtrace
      - t       display backtrace
      - v       display context variables
-     - \C-c f  visit script file
+     - C-c f  visit script file
      - w       where
      - q       stop
 ```
@@ -158,8 +163,8 @@ You can control the debugger with several keys.
 
 - Xdebug does not implement `dbgp:` scheme feature so that with
     `step-in` command into a lambda function (you can create it with
-    `create_function`` in PHP) or moched function the cursor position is located at
-    invalid line. Geben could handle this more gracefully.
+    `create_function` in PHP) or mocked function the cursor position is located at
+    an invalid line. Geben could handle this more gracefully.
 
 - Xdebug may tell invalid line number on breaking by `return` type
     breakpoint. To this case Geben indicates the cursor at the top of
