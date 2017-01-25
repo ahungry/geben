@@ -3138,6 +3138,7 @@ If non-nil, GEBEN will query the user before removing all breakpoints."
 
   ;; evaluation
   (define-key geben-mode-map "e" 'geben-eval-expression)
+  (define-key geben-mode-map "l" 'geben-eval-current-line)
   ;;(define-key geben-mode-map "E" 'geben-eval-current-word)
   ;;(define-key geben-mode-map "\C-x\C-e" 'geben-eval-last-sexp)
 
@@ -3638,6 +3639,15 @@ breakpoint and the value speficies the line number."
   "Evaluate a word at where the cursor is pointing."
   (interactive)
   (let ((expr (current-word)))
+    (when expr
+      (geben-with-current-session session
+        (geben-dbgp-command-eval session expr)))))
+
+(defun geben-eval-current-line ()
+  "Evaluate the current line."
+  (interactive)
+  (let ((expr (buffer-substring-no-properties (line-beginning-position)
+                                              (line-end-position))))
     (when expr
       (geben-with-current-session session
         (geben-dbgp-command-eval session expr)))))
