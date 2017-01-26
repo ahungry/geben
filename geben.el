@@ -3644,7 +3644,9 @@ breakpoint and the value speficies the line number."
         (geben-dbgp-command-eval session expr)))))
 
 (defun geben-eval-current-line ()
-  "Evaluate the current line."
+  "Evaluate the line in which the cursor is located during debugging.
+The line will be evaluated within the current execution context
+and the result will be displayed in the echo area."
   (interactive)
   (let ((expr (buffer-substring-no-properties (line-beginning-position)
                                               (line-end-position))))
