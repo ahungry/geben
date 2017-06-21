@@ -9,7 +9,7 @@
 ;; Code derived from Original Author: reedom <fujinaka.tohru@gmail.com>
 ;; Maintainer: Matthew Carter <m@ahungry.com>
 ;; URL: https://github.com/ahungry/geben
-;; Version: 1.0.3
+;; Version: 1.1.1
 ;; Keywords: c, comm, tools
 ;; Compatibility: Emacs 24+
 ;; Package-Requires: ((emacs "24.3") (cl-lib "0.5"))
@@ -74,7 +74,7 @@
   (require 'tree-widget)
   (require 'dbgp))
 
-(defvar geben-version "1.0.3")
+(defvar geben-version "1.1.1")
 
 ;;--------------------------------------------------------------
 ;; customization
