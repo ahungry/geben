@@ -337,7 +337,7 @@ Set the process up with SESSION-PARAMS."
                                           :server 1
                                           :service port
                                           :family 'ipv4
-                                          :nowait t
+                                          :nowait (< emacs-major-version 26) ;; emacs 26 asyncness seems to be too much for now, see issue #4
                                           :noquery t
                                           :filter 'dbgp-comint-setup
                                           :sentinel 'dbgp-listener-sentinel
