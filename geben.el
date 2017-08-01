@@ -2891,6 +2891,11 @@ The buffer commands are:
   :group 'geben
   :type '(repeat string))
 
+(defcustom geben-dbgp-session-user-filter-interactively-ask nil
+  "Enable to get asked for each URI to start a geben session for it."
+  :group 'geben
+  :type 'boolean)
+
 (defun geben-dbgp-session-user-filter (proc string)
   "Do not accept a session if its fileuri can be matched against "
   (let* ((xml (car (with-temp-buffer
@@ -2898,6 +2903,8 @@ The buffer commands are:
                      (xml-parse-region (point-min) (point-max)))))
          (fileuri (xml-get-attribute-or-nil xml 'fileuri)))
     (when (or
+           (and geben-dbgp-session-user-filter-interactively-ask
+                (not (yes-or-no-p (concat "geben accept: " fileuri))))
            ;; could probably be done in a nicer way
            (cl-some 'identity
                     (cl-loop for (reg value) on geben-dbgp-session-user-filter-uri-regexp-hitcounts by 'cddr
