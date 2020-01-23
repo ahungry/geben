@@ -2941,17 +2941,18 @@ and call `geben-dbgp-entry' with each chunk."
     (with-temp-buffer
       (insert string)
       (setq output
-            (or (ignore-errors
-                  (setq xml (xml-parse-region (point-min) (point-max)))
-                  (goto-char (point-min))
-                  (when (re-search-forward "\\?>" nil t)
-                    (delete-region (match-end 0) (point-max))
-                    (insert "\n")
-                    (xml-print xml)
-                    (propertize (buffer-string)
-                                'front-sticky t
-                                'font-lock-face 'dbgp-response-face)))
-                string)))
+            (or
+             (progn
+               (setq xml (xml-parse-region (point-min) (point-max)))
+               (goto-char (point-min))
+               (when (re-search-forward "\\?>" nil t)
+                 (delete-region (match-end 0) (point-max))
+                 (insert "\n")
+                 (xml-print xml)
+                 (propertize (buffer-string)
+                             'front-sticky t
+                             'font-lock-face 'dbgp-response-face)))
+             string)))
     (when xml
       (condition-case error-sexp
           (geben-dbgp-entry session (car xml))

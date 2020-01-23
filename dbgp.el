@@ -341,7 +341,8 @@ Set the process up with SESSION-PARAMS."
                                           :noquery t
                                           :filter 'dbgp-comint-setup
                                           :sentinel 'dbgp-listener-sentinel
-                                          :log 'dbgp-listener-log)))
+                                          :log 'dbgp-listener-log
+                                          )))
       (unless listener
         (error "Failed to create DBGp listener for port %d" port))
       (dbgp-plist-put listener :listener listener)
