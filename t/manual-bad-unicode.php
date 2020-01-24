@@ -7,7 +7,7 @@ echo $x;
 $y = 2;
 echo $y;
 
-// define('…',              '__hoa_core_fill');
+define('…',              '__hoa_core_fill');
 
 // $define = function ($constantName, $constantValue, $case = false) {
 //     if (!defined($constantName)) {
