@@ -779,6 +779,9 @@ If ECHO-P is t, echo the input as well."
 
 (defun dbgp-session-filter (proc string)
   "Given process PROC and string STRING, this is where the actual buffer insertion is done."
+  ;; (print "DBGP Session filter called...")
+  ;; (print string)
+  ;; (print "END OF STRING..")
   (let ((buf (process-buffer proc))
         (listener (dbgp-listener-get proc))
         (session-filter (dbgp-plist-get proc :session-filter))
