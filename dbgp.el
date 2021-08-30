@@ -854,22 +854,22 @@ If ECHO-P is t, echo the input as well."
       (dbgp-session-filter proc ""))))
 
 (defun dbgp-session-response-to-chunk ()
- (let* ((string dbgp-filter-pending-text)
-        (parts (split-string string "\0" nil)) ;; force element after trailing "\0"
-        (chunks '())
-        (done 0))
-   (while (> (length parts) 2) ;; denotes valid head, size and data
-     (let* ((head (pop parts))
-            (data (pop parts))
-            (need (string-to-number head))
-            (size (string-bytes data)))
-       (if (= need size)
-           (progn
-             (setq chunks (cons data chunks))
-             (setq done (+ done (length head) (length data) 2)))
-         (error "Invalid chunk : header size = %s, actual data length = %s" need size))))
-   (if (> (length chunks) 0)
-       (setq dbgp-filter-pending-text (substring dbgp-filter-pending-text done))))
+  (let* ((string dbgp-filter-pending-text)
+         (parts (split-string string "\0" nil)) ;; force element after trailing "\0"
+         (chunks '())
+         (done 0))
+    (while (> (length parts) 2) ;; denotes valid head, size and data
+      (let* ((head (pop parts))
+             (data (pop parts))
+             (need (string-to-number head))
+             (size (string-bytes data)))
+        (if (= need size)
+            (progn
+              (setq chunks (cons data chunks))
+              (setq done (+ done (length head) (length data) 2)))
+          (error "Invalid chunk : header size = %s, actual data length = %s" need size))))
+    (if (> (length chunks) 0)
+        (setq dbgp-filter-pending-text (substring dbgp-filter-pending-text done)))))
 
 (defun dbgp-session-sentinel (proc string)
   (let ((sentinel (dbgp-plist-get proc :session-sentinel)))
