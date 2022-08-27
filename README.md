@@ -9,7 +9,7 @@ help of custom extensions.
 
 [![MELPA](https://melpa.org/packages/geben-badge.svg)](https://melpa.org/#/geben)
 
-<!-- markdown-toc start - Do not edit this section. Run M-x markdown-toc-generate-toc again -->
+<!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 **Table of Contents**
 
 - [Geben](#geben)
@@ -17,18 +17,20 @@ help of custom extensions.
 - [Installation](#installation)
     - [PHP](#php)
         - [Command Line](#command-line)
+            - [Xdebug 2.x](#xdebug-2x)
+            - [Xdebug 3.x](#xdebug-3x)
         - [Web](#web)
         - [VMs](#vms)
     - [Perl](#perl)
     - [Python](#python)
     - [Ruby](#ruby)
     - [Tcl](#tcl)
+    - [Node.js](#nodejs)
 - [Usage](#usage)
-- [About](#about)
-    - [Known Issues](#known-issues)
-        - [PHP](#php)
-    - [Support](#support)
-    - [License](#license)
+- [Known Issues](#known-issues)
+    - [PHP](#php-1)
+- [Contributing](#contributing)
+- [License](#license)
 
 <!-- markdown-toc end -->
 
@@ -141,6 +143,23 @@ We recommend [jade](https://github.com/NicolasPetton/jade) to debug node applica
 
 # Usage
 You can control the debugger with several keys.
+
+## NOTE: To enable some legacy bindings, please bind yourself (they were in a reserved key set)
+
+```lisp
+  (define-key geben-mode-map "\C-cb" 'geben-show-breakpoint-list)
+  (define-key geben-mode-map "\C-cp" 'geben-toggle-pause-at-entry-line-flag)
+  (define-key geben-mode-map "\C-cf" 'geben-find-file)
+  (define-key geben-mode-map "\C-c\C-s" 'geben-step-into)
+  (define-key geben-mode-map "\C-c\C-n" 'geben-step-over)
+  (define-key geben-mode-map "\C-c\C-c" 'geben-run)
+  (define-key geben-mode-map "\C-c\C-d" 'geben-unset-breakpoint-line)
+  (define-key geben-mode-map "\C-c\C-t" 'geben-set-breakpoint-line)
+  (define-key geben-mode-map "\C-c\C-l" 'geben-where)
+
+  ;; OR a new convenience function for your init file:
+  (geben-define-legacy-keybindings) ;; Will do the aforementioned bindings
+```
 
 ```conf
      - spc     step into/step over

@@ -3138,7 +3138,7 @@ If non-nil, GEBEN will query the user before removing all breakpoints."
   (define-key geben-mode-map "B" 'geben-breakpoint-menu)
   (define-key geben-mode-map "u" 'geben-unset-breakpoint-line)
   (define-key geben-mode-map "U" 'geben-clear-breakpoints)
-  (define-key geben-mode-map "\C-cb" 'geben-show-breakpoint-list)
+  ;; (define-key geben-mode-map "\C-cb" 'geben-show-breakpoint-list)
   ;;(define-key geben-mode-map "B" 'geben-next-breakpoint)
   ;;(define-key geben-mode-map "x" 'geben-set-conditional-breakpoint)
   ;;(define-key geben-mode-map "X" 'geben-set-global-break-condition)
@@ -3160,8 +3160,8 @@ If non-nil, GEBEN will query the user before removing all breakpoints."
   (define-key geben-mode-map "?" 'geben-mode-help)
   (define-key geben-mode-map "d" 'geben-show-backtrace)
   (define-key geben-mode-map "t" 'geben-show-backtrace)
-  (define-key geben-mode-map "\C-cp" 'geben-toggle-pause-at-entry-line-flag)
-  (define-key geben-mode-map "\C-cf" 'geben-find-file)
+  ;; (define-key geben-mode-map "\C-cp" 'geben-toggle-pause-at-entry-line-flag)
+  ;; (define-key geben-mode-map "\C-cf" 'geben-find-file)
 
   ;;(define-key geben-mode-map "-" 'negative-argument)
 
@@ -3169,11 +3169,25 @@ If non-nil, GEBEN will query the user before removing all breakpoints."
   ;;(define-key geben-mode-map "=" 'geben-temp-display-freq-count)
 
   ;; GUD bindings
+  ;; (define-key geben-mode-map "\C-c\C-s" 'geben-step-into)
+  ;; (define-key geben-mode-map "\C-c\C-n" 'geben-step-over)
+  ;; (define-key geben-mode-map "\C-c\C-c" 'geben-run)
+
+  (define-key geben-mode-map "\C-x " 'geben-set-breakpoint-line)
+  ;; (define-key geben-mode-map "\C-c\C-d" 'geben-unset-breakpoint-line)
+  ;; (define-key geben-mode-map "\C-c\C-t" 'geben-set-breakpoint-line)
+  ;; (define-key geben-mode-map "\C-c\C-l" 'geben-where)
+  )
+
+(defun geben-define-legacy-keybindings ()
+  (interactive)
+  (define-key geben-mode-map "\C-cb" 'geben-show-breakpoint-list)
+  (define-key geben-mode-map "\C-cp" 'geben-toggle-pause-at-entry-line-flag)
+  (define-key geben-mode-map "\C-cf" 'geben-find-file)
   (define-key geben-mode-map "\C-c\C-s" 'geben-step-into)
   (define-key geben-mode-map "\C-c\C-n" 'geben-step-over)
   (define-key geben-mode-map "\C-c\C-c" 'geben-run)
 
-  (define-key geben-mode-map "\C-x " 'geben-set-breakpoint-line)
   (define-key geben-mode-map "\C-c\C-d" 'geben-unset-breakpoint-line)
   (define-key geben-mode-map "\C-c\C-t" 'geben-set-breakpoint-line)
   (define-key geben-mode-map "\C-c\C-l" 'geben-where))

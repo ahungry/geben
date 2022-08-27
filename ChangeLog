@@ -1,3 +1,8 @@
+2022-08-26 Matthew Carter  <m@ahungry.com>
+	* [FIX] Revert some problematic commits related to unicode support
+	* [CHG] Do not bind reserved key binds under C-c prefix
+	* [ADD] Add new geben-define-legacy-keybindings to restore them
+
 2016-08-14 Matthew Carter  <m@ahungry.com>
 
 	* [ADD] New tag release 1.1.0
