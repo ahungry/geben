@@ -1,4 +1,10 @@
 # Geben
+
+_Maintainer Note: Geben support/maintenance is minimal at the moment
+(most the previous maintainers no longer use it in day to day work).
+I've heard good things about: https://github.com/emacs-lsp/dap-mode
+and recommend giving it a try if able._
+
 Geben is a software package that interfaces Emacs to DBGp protocol
 with which you can debug running scripts interactively. At this point,
 the DBGp protocol is supported in several scripting languages with
