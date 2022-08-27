@@ -4,7 +4,7 @@ with which you can debug running scripts interactively. At this point,
 the DBGp protocol is supported in several scripting languages with
 help of custom extensions.
 
- * PHP with Xdebug 2.*
+ * PHP with Xdebug 2.* / Xdebug 3.*
  * Perl, Python, Ruby and Tcl with Komodo Debugger Extensions
 
 [![MELPA](https://melpa.org/packages/geben-badge.svg)](https://melpa.org/#/geben)
@@ -65,6 +65,8 @@ At this point, you need to run the script with the xdebug configuration set up t
 
 Run this to invoke your script with xdebug dbgp enabled (or add to your CLI php.ini file to ensure it runs with these settings every time):
 
+#### Xdebug 2.x
+
 ```sh
  php -d xdebug.remote_enable=on \
      -d xdebug.remote_host=127.0.0.1 \
@@ -74,6 +76,21 @@ Run this to invoke your script with xdebug dbgp enabled (or add to your CLI php.
      -d xdebug.remote_autostart=On \
      /tmp/gebenTest.php
 ```
+
+#### Xdebug 3.x
+
+```sh
+ php -d xdebug.mode=debug \
+     -d xdebug.client_host=127.0.0.1 \
+     -d xdebug.client_port=9000  \
+     -d xdebug.remote_handler=dbgp \
+     -d xdebug.idekey=geben \
+     -d xdebug.start_with_request=yes \
+     /tmp/gebenTest.php
+```
+
+Alternatively, you can use `export XDEBUG_MODE=debug` instead of `-d xdebug.mode=debug`
+
 
 You will notice the script does not complete, it pauses in your emacs session.  Press `SPC` to step forward a line at a time.
 
